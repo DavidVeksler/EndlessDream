@@ -1,0 +1,114 @@
+﻿@page "/image-generator"
+@inject IJSRuntime JSRuntime
+@using System.Threading.Tasks
+@using EndlessDreamBlazorWeb.Services
+@using SixLabors.ImageSharp
+@using SixLabors.ImageSharp.Processing
+@using SixLabors.ImageSharp.Formats.Png
+@using System.IO
+
+<PageTitle>Image Generator</PageTitle>
+
+<div class="container">
+    <h1 class="my-3">AI Image Generator</h1>
+
+    <div class="form-group">
+        <label for="prompt">Image Prompt:</label>
+        <textarea id="prompt" @bind="@PromptText" rows="4" class="form-control"></textarea>
+    </div>
+
+    <div class="form-group">
+        <div class="form-check">
+            <input type="checkbox" id="IsPhoto" class="form-check-input" value="IsPhoto" @bind="IsPhoto" />
+            <label class="form-check-label" for="IsPhoto">Is Photo</label>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="seed">Seed:</label>
+        <input type="number" id="seed" class="form-control" @bind="Seed" />
+    </div>
+
+    <button @onclick="RenderImage" class="btn btn-primary mt-2">Render Image</button>
+    <p class="status my-2">@Status</p>
+</div>
+
+<div class="container mt-4">
+    @if (IsGenerating)
+    {
+        <div class="d-flex align-items-center justify-content-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="ms-2">Generating image...</p>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var imageBase64 in ImageBase64List)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card">
+                        <img src="@($"data:image/png;base64,{imageBase64}")" alt="Generated Image" class="img-fluid img-thumbnail" @onclick="(_) => ShowImageFullScreen(imageBase64)" />
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+
+@code {
+    private string PromptText;
+    private bool IsPhoto { get; set; } = true;
+    private int Seed { get; set; } = -1;
+    private string Status;
+    private bool IsGenerating;
+
+    private List<string> ImageBase64List = new List<string>();
+
+    private async Task ShowImageFullScreen(string imageBase64)
+    {
+        var imageUrl = $"data:image/png;base64,{imageBase64}";
+        await JSRuntime.InvokeVoidAsync("open", imageUrl, "_blank");
+    }
+
+    private async Task RenderImage()
+    {
+        IsGenerating = true;
+        Status = "Generating image...";
+
+        try
+        {
+            // Call the server-side RenderStableDiffusionImage function here
+            // and update the ImageUrl and Status variables accordingly.
+            var generator = new ImageGenerator();
+            var image = await generator.RenderStableDiffusionImage(PromptText, 20, Seed, IsPhoto);
+            await JSRuntime.InvokeVoidAsync("console.log", "Generating image...");
+
+
+            using (var ms = new MemoryStream())
+            {
+                image.SaveAsPng(ms);
+                var imageBytes = ms.ToArray();
+
+                ImageBase64List.Insert(0, Convert.ToBase64String(imageBytes));
+                await JSRuntime.InvokeVoidAsync("console.log", generator.exifProfile.Values[0]);
+            }
+
+            Status = "Image generated successfully.";
+            IsGenerating = false;
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"An error occurred while generating the image: {ex.Message}");
+            Status = "Generation failed: " + ex.ToString();
+            throw;
+        }
+        finally
+        {
+            IsGenerating = false;
+        }
+    }
+}
