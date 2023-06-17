@@ -9,31 +9,41 @@
 
 <PageTitle>Image Generator</PageTitle>
 
-<div class="container">
-    <h1 class="my-3">AI Image Generator</h1>
+<div class="container py-5">
+    <h1 class="text-center mb-4">AI Image Generator</h1>
 
-    <div class="form-group">
-        <label for="prompt">Image Prompt:</label>
-        <textarea id="prompt" @bind="@PromptText" rows="4" class="form-control"></textarea>
-    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="form-group">
+                <label for="prompt">Image Prompt:</label>
+                <textarea id="prompt" @bind="@PromptText" rows="4" class="form-control"></textarea>
+            </div>
 
-    <div class="form-group">
-        <div class="form-check">
-            <input type="checkbox" id="IsPhoto" class="form-check-input" value="IsPhoto" @bind="IsPhoto" />
-            <label class="form-check-label" for="IsPhoto">Is Photo</label>
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" id="IsPhoto" class="form-check-input" value="IsPhoto" @bind="IsPhoto" />
+                    <label class="form-check-label" for="IsPhoto">Is Photo</label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="seed">Seed:</label>
+                <input type="number" id="seed" class="form-control" @bind="Seed" />
+            </div>
+
+            <div class="form-group">
+                <label for="steps">Steps:</label>
+                <input type="number" id="steps" class="form-control" @bind="Steps" />
+            </div>
+
+            <button @onclick="RenderImage" class="btn btn-primary mt-2">Render Image</button>
+            <button @onclick="RandomImage" class="btn btn-primary mt-2">Random Image</button>
+            <p class="status mt-2">@Status</p>
         </div>
     </div>
-
-    <div class="form-group">
-        <label for="seed">Seed:</label>
-        <input type="number" id="seed" class="form-control" @bind="Seed" />
-    </div>
-
-    <button @onclick="RenderImage" class="btn btn-primary mt-2">Render Image</button>
-    <p class="status my-2">@Status</p>
 </div>
 
-<div class="container mt-4">
+<div class="container mt-5">
     @if (IsGenerating)
     {
         <div class="d-flex align-items-center justify-content-center">
@@ -56,6 +66,7 @@
             }
         </div>
     }
+
 </div>
 
 
@@ -63,6 +74,7 @@
     private string PromptText;
     private bool IsPhoto { get; set; } = true;
     private int Seed { get; set; } = -1;
+    private int Steps { get; set; } = 20;
     private string Status;
     private bool IsGenerating;
 
@@ -74,7 +86,7 @@
         await JSRuntime.InvokeVoidAsync("open", imageUrl, "_blank");
     }
 
-    private async Task RenderImage()
+    private async Task RandomImage()
     {
         IsGenerating = true;
         Status = "Generating image...";
@@ -84,7 +96,9 @@
             // Call the server-side RenderStableDiffusionImage function here
             // and update the ImageUrl and Status variables accordingly.
             var generator = new ImageGenerator();
-            var image = await generator.RenderStableDiffusionImage(PromptText, 20, Seed, IsPhoto);
+            var service = new OpenAIGPTConversationService();
+            string PromptText = await service.GetStableDiffusionRandomPrompt();
+            var image = await generator.RenderStableDiffusionImage(PromptText, Steps, Seed, IsPhoto);
             await JSRuntime.InvokeVoidAsync("console.log", "Generating image...");
 
 
@@ -104,7 +118,45 @@
         {
             await JSRuntime.InvokeVoidAsync("console.error", $"An error occurred while generating the image: {ex.Message}");
             Status = "Generation failed: " + ex.ToString();
-            throw;
+            //throw;
+        }
+        finally
+        {
+            IsGenerating = false;
+        }
+    }
+
+    private async Task RenderImage()
+    {
+        IsGenerating = true;
+        Status = "Generating image...";
+
+        try
+        {
+            // Call the server-side RenderStableDiffusionImage function here
+            // and update the ImageUrl and Status variables accordingly.
+            var generator = new ImageGenerator();
+            var image = await generator.RenderStableDiffusionImage(PromptText, Steps, Seed, IsPhoto);
+            await JSRuntime.InvokeVoidAsync("console.log", "Generating image...");
+
+
+            using (var ms = new MemoryStream())
+            {
+                image.SaveAsPng(ms);
+                var imageBytes = ms.ToArray();
+
+                ImageBase64List.Insert(0, Convert.ToBase64String(imageBytes));
+                await JSRuntime.InvokeVoidAsync("console.log", generator.exifProfile.Values[0]);
+            }
+
+            Status = "Image generated successfully.";
+            IsGenerating = false;
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"An error occurred while generating the image: {ex.Message}");
+            Status = "Generation failed: " + ex.ToString();
+            //throw;
         }
         finally
         {

@@ -1,0 +1,21 @@
+﻿@page "/GPTTest"
+@using EndlessDreamBlazorWeb.Services;
+
+<PageTitle>Counter</PageTitle>
+
+<h1>Counter</h1>
+
+<p role="status">Reply: @currentCount</p>
+
+<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+
+@code {
+    private string currentCount = "";
+
+    private async void IncrementCount()
+    {
+        var service = new OpenAIGPTConversationService();
+        var answer = await service.GetSingleResponseAsync("Capital of France? Respond with answer only.");
+        currentCount = answer;
+    }
+}

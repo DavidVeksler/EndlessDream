@@ -45,6 +45,7 @@ namespace EndlessDreamBlazorWeb.Services
 
             if (data.TryGetProperty("error", out error))
             {
+                Console.WriteLine(error.ToString());
                 throw new Exception(error.ToString());
             }
 
