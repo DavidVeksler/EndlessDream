@@ -1,14 +1,8 @@
 ﻿namespace EndlessDreamBlazorWeb.Data
 {
-
-    using Microsoft.Extensions.Configuration;
-
-
-
-
     public class Settings
     {
-        internal static IConfigurationRoot configuration;
+        internal static IConfigurationRoot? configuration;
 
         private Settings()
         {
@@ -27,7 +21,11 @@
         {
             get
             {
-                if (configuration == null) InitConfiguration();
+                if (configuration == null)
+                {
+                    InitConfiguration();
+                }
+
                 string apiKey = configuration["OpenAI:ApiKey"];
                 return apiKey;
             }

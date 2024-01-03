@@ -7,13 +7,14 @@ namespace EndlessDreamBlazorWeb.Services
     public class ImageGenerator
     {
         private static readonly HttpClient client = new();
-        private static readonly string url = "http://127.0.0.1:8080";
+        private static readonly string url = "http://192.168.1.162:8080";
         private JsonElement error;
         internal ExifProfile? exifProfile;
 
 
         public async Task<Image?> RenderStableDiffusionImage(string prompt, int steps, int seed = -1, bool IsPhoto = true)
         {
+
             if (IsPhoto)
             {
                 prompt = "photo of " + prompt;
@@ -22,12 +23,12 @@ namespace EndlessDreamBlazorWeb.Services
             var payload = new
             {
                 prompt,
-                negative_prompt = "easynegative, Asian-Less-Neg, nsfw, ugly, blurry, distorted, nude",
+                negative_prompt = "easynegative, CyberRealistic_Negative-neg, epiCNegative",
                 steps,
                 cfgScale = 7,
                 seed,
-                modelHash = "c249d7853b",
-                model = "dreamshaper_6BakedVae",
+                modelHash = "925bd947d7",
+                model = "cyberrealistic_v41BackToBasics",
                 ensd = 31337,
                 tokenMergingRatio = 0.5,
                 faceRestoration = "CodeFormer",
