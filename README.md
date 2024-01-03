@@ -6,6 +6,13 @@ This project is a web-based application designed to generate images using AI mod
 
 Demo: https://dream.davidveksler.com/image-generator
 
+https://github.com/DavidVeksler/EndlessDream/blob/master/Images/Screenshot.png?raw=true
+
+## Screenshot
+
+![AI Image Generator Screenshot](https://github.com/DavidVeksler/EndlessDream/blob/master/Images/Screenshot.png?raw=true)
+
+
 ## Features
 
 - **Prompt-based Image Generation**: Users can input text prompts to guide the AI in generating images.
