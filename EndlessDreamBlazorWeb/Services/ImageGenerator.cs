@@ -11,10 +11,8 @@ namespace EndlessDreamBlazorWeb.Services
         private JsonElement error;
         internal ExifProfile? exifProfile;
 
-
         public async Task<Image?> RenderStableDiffusionImage(string prompt, int steps, int seed = -1, bool IsPhoto = true)
         {
-
             if (IsPhoto)
             {
                 prompt = "photo of " + prompt;
@@ -27,15 +25,13 @@ namespace EndlessDreamBlazorWeb.Services
                 steps,
                 cfgScale = 7,
                 seed,
-                modelHash = "925bd947d7",
-                model = "cyberrealistic_v41BackToBasics",
+                modelHash = "735e4c3a44",
                 ensd = 31337,
                 tokenMergingRatio = 0.5,
                 faceRestoration = "CodeFormer",
                 restore_faces = true,
                 save_images = false,
             };
-
 
             StringContent content = new(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
 
@@ -49,7 +45,6 @@ namespace EndlessDreamBlazorWeb.Services
                 Console.WriteLine(error.ToString());
                 throw new Exception(error.ToString());
             }
-
 
             foreach (JsonElement i in data.GetProperty("images").EnumerateArray())
             {
@@ -76,5 +71,4 @@ namespace EndlessDreamBlazorWeb.Services
             return null;
         }
     }
-
 }

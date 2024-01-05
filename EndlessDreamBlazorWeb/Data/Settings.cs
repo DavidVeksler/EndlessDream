@@ -6,7 +6,6 @@
 
         private Settings()
         {
-
         }
 
         private static void InitConfiguration()
@@ -30,6 +29,5 @@
                 return apiKey;
             }
         }
-
     }
 }
