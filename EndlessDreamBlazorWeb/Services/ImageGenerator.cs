@@ -7,9 +7,10 @@ namespace EndlessDreamBlazorWeb.Services
     public class ImageGenerator
     {
         private static readonly HttpClient client = new();
-        private static readonly string url = "http://192.168.1.162:8080";
+        private static readonly string url = "http://192.168.1.144:8080";
         private JsonElement error;
         internal ExifProfile? exifProfile;
+        private const string MODEL_HASH = "c8df560d29";
 
         public async Task<Image?> RenderStableDiffusionImage(string prompt, int steps, int seed = -1, bool IsPhoto = true)
         {
@@ -21,16 +22,19 @@ namespace EndlessDreamBlazorWeb.Services
             var payload = new
             {
                 prompt,
-                negative_prompt = "easynegative, CyberRealistic_Negative-neg, epiCNegative",
+                negative_prompt = "easynegative, CyberRealistic_Negative-neg, epiCNegative, ac_neg1",
                 steps,
                 cfgScale = 7,
                 seed,
-                modelHash = "735e4c3a44",
+                modelHash = MODEL_HASH,
                 ensd = 31337,
                 tokenMergingRatio = 0.5,
                 faceRestoration = "CodeFormer",
                 restore_faces = true,
                 save_images = false,
+                skip_clip=2,
+                width= 800, height= 800,
+               
             };
 
             StringContent content = new(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
