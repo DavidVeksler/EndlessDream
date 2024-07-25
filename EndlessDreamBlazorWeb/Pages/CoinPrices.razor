@@ -1,0 +1,189 @@
+﻿@page "/CoinPrices"
+@using System.Timers
+@using System.Security.Cryptography
+@using EndlessDreamBlazorWeb.Services
+@inject CoinGeckoPriceService CoinGeckoService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>Coin Prices</PageTitle>
+
+<h3 class="mb-4">Crypto Asset Prices</h3>
+
+<div class="progress mb-3">
+    <div class="progress-bar" role="progressbar" style="width: @(_progressValue)%;" aria-valuenow="@(_progressValue)" aria-valuemin="0" aria-valuemax="100"></div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    @foreach (var currency in _currencies)
+    {
+        <div class="col">
+            <div class="card h-100 crypto-card @GetPriceChangeClass(currency.Id)" style="@GetGradientStyle(currency.Name)">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title mb-0">
+                            <img src="@currency.Image" alt="@currency.Name" class="me-2" style="width: 24px; height: 24px;" />
+                            @currency.Name
+                        </h5>
+                        <span class="badge bg-primary">Rank #@currency.MarketCapRank</span>
+                    </div>
+                    <h6 class="card-subtitle mb-2 text-muted">@currency.Symbol.ToUpper()</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fs-4">$@currency.CurrentPrice.ToString("N2")</span>
+                        <span class="@(currency.PriceChangePercentage24h >= 0 ? "text-success" : "text-danger")">
+                            <i class="bi @(currency.PriceChangePercentage24h >= 0 ? "bi-arrow-up" : "bi-arrow-down")"></i>
+                            @(currency.PriceChangePercentage24h.ToString("0.00"))%
+                        </span>
+                    </div>
+                    <div class="row row-cols-2 g-2 mb-2">
+                        @foreach (var (icon, label, value) in new[]
+                        {
+                            ("cash-stack", "MCap", FormatLargeNumber(currency.MarketCap)),
+                            ("arrow-left-right", "Vol", FormatLargeNumber(currency.TotalVolume)),
+                            ("graph-up", "ATH", currency.Ath.ToString("N2")),
+                            ("calendar-event", "ATH Date", currency.AthDate.ToString("d"))
+                        })
+                        {
+                            <div class="col">
+                                <small><i class="bi bi-@icon"></i> @label: $@value</small>
+                            </div>
+                        }
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small><i class="bi bi-clock"></i> Updated: @currency.LastUpdated.ToLocalTime().ToString("g")</small>
+                        <button class="btn btn-link p-0" @onclick="@((e) => ShowTooltip(currency, e))" @onclick:stopPropagation="true">
+                            <i class="bi bi-info-circle"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div id="custom-tooltip" class="custom-tooltip" style="display: none;"></div>
+
+@code {
+    private List<CoinInfo> _currencies = new();
+    private Dictionary<string, decimal> _previousPrices = new();
+    private Timer _timer;
+    private Timer _progressTimer;
+    private const string CurrencyIds = "";
+    private const int RefreshInterval = 10000;
+    private double _progressValue = 100;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await FetchCurrencyData();
+        _timer = new Timer(RefreshInterval);
+        _timer.Elapsed += async (_, _) => await FetchCurrencyData();
+        _timer.Start();
+        _progressTimer = new Timer(100);
+        _progressTimer.Elapsed += (_, _) => UpdateProgress();
+        _progressTimer.Start();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeTooltip");
+        }
+    }
+
+    private async Task FetchCurrencyData()
+    {
+        try
+        {
+            var newCurrencies = (await CoinGeckoService.GetCurrencyInfoAsync("usd", CurrencyIds)).ToList();
+            _previousPrices = newCurrencies.ToDictionary(c => c.Id, c => c.CurrentPrice);
+            _currencies = newCurrencies;
+            _progressValue = 100;
+            StateHasChanged();
+            await Task.Delay(2000);
+            _previousPrices = _currencies.ToDictionary(c => c.Id, c => c.CurrentPrice);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching currency data: {ex.Message}");
+        }
+    }
+
+    private void UpdateProgress() => _progressValue = Math.Max(0, _progressValue - (100.0 / (RefreshInterval / 100)));
+
+    private string GetPriceChangeClass(string currencyId) =>
+        _previousPrices.TryGetValue(currencyId, out var previousPrice)
+            ? _currencies.FirstOrDefault(c => c.Id == currencyId)?.CurrentPrice.CompareTo(previousPrice) switch
+            {
+                > 0 => "price-up",
+                < 0 => "price-down",
+                _ => ""
+            }
+            : "";
+
+    private async Task ShowTooltip(CoinInfo currency, MouseEventArgs e)
+    {
+        var content = string.Join("<br>", currency.GetType().GetProperties()
+            .Where(p => p.GetValue(currency) != null && p.Name != "Image" && p.Name != "Roi")
+            .Select(p => $"<strong>{p.Name}:</strong> {FormatValue(p.GetValue(currency))}"));
+        
+        await JSRuntime.InvokeVoidAsync("showTooltip", content, e.ClientX, e.ClientY);
+    }
+
+    private static string FormatValue(object value) => value switch
+    {
+        decimal d => d.ToString("N2"),
+        DateTime dt => dt.ToString("g"),
+        long l => FormatLargeNumber(l),
+        double d => d.ToString("N2"),
+        _ => value.ToString()
+    };
+
+    private static string FormatLargeNumber(long number) => number switch
+    {
+        >= 1_000_000_000 => $"{number / 1_000_000_000.0:N2}B",
+        >= 1_000_000 => $"{number / 1_000_000.0:N2}M",
+        >= 1_000 => $"{number / 1_000.0:N2}K",
+        _ => number.ToString("N0")
+    };
+
+    private static string GetGradientStyle(string name)
+    {
+        using var md5 = MD5.Create();
+        var hashBytes = md5.ComputeHash(System.Text.Encoding.ASCII.GetBytes(name));
+        var color1 = $"#{BitConverter.ToString(hashBytes, 0, 3).Replace("-", "")}";
+        var color2 = $"#{BitConverter.ToString(hashBytes, 4, 3).Replace("-", "")}";
+        return $"background: linear-gradient(135deg, {color1}22, {color2}22);";
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        _progressTimer?.Dispose();
+    }
+}
+
+
+<script>
+    window.initializeTooltip = function () {
+        document.addEventListener('click', function (event) {
+            var tooltip = document.getElementById('custom-tooltip');
+            if (!event.target.closest('.btn-link') && !event.target.closest('#custom-tooltip')) {
+                tooltip.style.display = 'none';
+            }
+        });
+    };
+
+    window.showTooltip = function (content, x, y) {
+        var tooltip = document.getElementById('custom-tooltip');
+        tooltip.innerHTML = content;
+        tooltip.style.display = 'block';
+
+        var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+        tooltip.style.top = (y + scrollTop + 20) + 'px';
+        tooltip.style.left = (x + scrollLeft) + 'px';
+    };
+</script>

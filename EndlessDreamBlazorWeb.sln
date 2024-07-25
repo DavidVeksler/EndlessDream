@@ -5,6 +5,8 @@ VisualStudioVersion = 17.6.33723.286
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EndlessDreamBlazorWeb", "EndlessDreamBlazorWeb\EndlessDreamBlazorWeb.csproj", "{083151E3-BA44-4CA2-BC5C-78690964B5B9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DreamConsole", "DreamConsole\DreamConsole.csproj", "{4E067E70-A960-4E29-B08F-1E6D4ABF3A76}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{083151E3-BA44-4CA2-BC5C-78690964B5B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{083151E3-BA44-4CA2-BC5C-78690964B5B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{083151E3-BA44-4CA2-BC5C-78690964B5B9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E067E70-A960-4E29-B08F-1E6D4ABF3A76}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E067E70-A960-4E29-B08F-1E6D4ABF3A76}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E067E70-A960-4E29-B08F-1E6D4ABF3A76}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E067E70-A960-4E29-B08F-1E6D4ABF3A76}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,56 @@
+﻿
+.crypto-card {
+     transition: transform 0.2s, box-shadow 0.5s;
+ }
+
+.crypto-card:hover {
+    transform: translateY(-5px);
+}
+
+.crypto-card.price-up {
+    animation: glow-green 2s;
+}
+
+.crypto-card.price-down {
+    animation: glow-red 2s;
+}
+
+@keyframes glow-green {
+     0%, 100% {
+         box-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+     }
+
+     50% {
+         box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+     }
+ }
+
+@keyframes glow-red {
+     0%, 100% {
+         box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+     }
+
+     50% {
+         box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+     }
+ }
+
+.progress {
+    height: 5px;
+}
+
+.progress-bar {
+    transition: width 0.1s linear;
+}
+
+.custom-tooltip {
+    position: absolute;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    max-width: 300px;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+

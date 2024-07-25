@@ -1,4 +1,5 @@
 using EndlessDreamBlazorWeb.Data;
+using EndlessDreamBlazorWeb.Services;
 using Microsoft.AspNetCore;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -7,6 +8,8 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
+builder.Services.AddScoped<CoinGeckoPriceService>();
+
 
 WebApplication app = builder.Build();
 
