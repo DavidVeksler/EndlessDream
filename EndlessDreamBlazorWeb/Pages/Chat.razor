@@ -1,21 +1,44 @@
 ﻿@page "/chat"
 @inject LlmService LlmService
+@inject IJSRuntime JSRuntime
 @using System.Text
+<PageTitle>AI-Powered Chat | Engage in Intelligent Conversations</PageTitle>
+<HeadContent>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Engage in intelligent conversations with our AI-powered chat. Experience the future of communication with advanced language models and intuitive interface." />
+<meta name="keywords" content="AI chat, intelligent conversations, language models, machine learning, natural language processing" />
+<meta name="author" content="Your Company Name" />
+<meta name="robots" content="index, follow" />
+<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:url" content="https://yourdomain.com/chat" />
+<meta property="twitter:title" content="AI-Powered Chat | Engage in Intelligent Conversations" />
+<meta property="twitter:description" content="Experience the future of communication with our AI-powered chat. Engage in intelligent conversations using advanced language models." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="AI-Powered Chat | Engage in Intelligent Conversations" />
+<meta property="og:description" content="Experience the future of communication with our AI-powered chat. Engage in intelligent conversations using advanced language models." />
+    @* <meta property="twitter:image" content="https://yourdomain.com/images/ai-chat-preview.jpg" /> *@
 
-<div class="container-fluid vh-100 d-flex flex-column bg-light">
+
+
+
+</HeadContent>
+
+
+<div class="container-fluid vh-100 d-flex flex-column">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#"><i class="bi bi-robot"></i> WebLLM Chat</a>
+            <a class="navbar-brand" href="#"><i class="bi bi-robot"></i> LLM Chat</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="#" @onclick="NewChat"><i class="bi bi-plus-circle"></i> New Chat</a>
+                        <button class="nav-link" @onclick="NewChat"><i class="bi bi-plus-circle"></i> New Chat</button>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" @onclick="OpenSettingsModal"><i class="bi bi-gear"></i> Settings</a>
+                        <button class="nav-link" @onclick="OpenSettingsModal"><i class="bi bi-gear"></i> Settings</button>
                     </li>
                 </ul>
             </div>
@@ -23,8 +46,8 @@
     </nav>
 
     <div class="row flex-grow-1 overflow-hidden">
-        <div class="col-md-3 d-flex flex-column p-3 border-end">
-            <div class="list-group overflow-auto rounded-3 shadow-sm">
+        <div class="col-md-3 d-flex flex-column p-3 border-end overflow-auto">
+            <div class="list-group rounded-3 shadow-sm">
                 @foreach (var chat in Chats)
                 {
                     <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(chat == CurrentChat ? "active" : "")" @onclick="() => SelectChat(chat)">
@@ -35,7 +58,7 @@
             </div>
         </div>
         <div class="col-md-9 d-flex flex-column p-3">
-            <div class="card flex-grow-1 shadow">
+            <div class="card flex-grow-1 shadow d-flex flex-column">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">@CurrentChat.Title</h5>
                     <div class="dropdown">
@@ -50,7 +73,7 @@
                         </ul>
                     </div>
                 </div>
-                <div class="card-body overflow-auto" style="height: 0;">
+                <div class="card-body overflow-auto flex-grow-1" id="chatMessages">
                     @foreach (var message in CurrentChat.Messages)
                     {
                         <div class="d-flex @(message.IsUser ? "justify-content-end" : "justify-content-start") mb-3">
@@ -101,7 +124,6 @@
     </div>
 </div>
 
-<!-- Settings Modal -->
 <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -121,7 +143,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" @onclick="SaveSettings" data-bs-dismiss="modal">Save changes</button>
+                <button type="button" class="btn btn-primary" @onclick="SaveSettings">Save changes</button>
             </div>
         </div>
     </div>
@@ -157,11 +179,20 @@
         var chat = new Conversation { Title = $"Chat {Chats.Count + 1}" };
         Chats.Add(chat);
         CurrentChat = chat;
+        StateHasChanged();
     }
 
-    void SelectChat(Conversation chat) => CurrentChat = chat;
+    void SelectChat(Conversation chat)
+    {
+        CurrentChat = chat;
+        StateHasChanged();
+    }
 
-    void SelectModel(Model model) => SelectedModel = model;
+    void SelectModel(Model model)
+    {
+        SelectedModel = model;
+        StateHasChanged();
+    }
 
     async Task HandleKeyUp(KeyboardEventArgs e)
     {
@@ -198,28 +229,31 @@
         aiMessage.Content = sb.ToString();
         IsSending = false;
         StateHasChanged();
+        await ScrollToBottom();
     }
 
-    void OpenSettingsModal()
+    async Task OpenSettingsModal()
     {
-        // In a real implementation, you'd use JS interop to open the modal
-        // For simplicity, we'll just log a message
-        Console.WriteLine("Opening settings modal");
+        await JSRuntime.InvokeVoidAsync("openModal", "settingsModal");
     }
 
-    void SaveSettings()
+    async Task SaveSettings()
     {
-        // In a real implementation, you might want to save these settings to local storage or a backend
-        Console.WriteLine($"Saved settings: Temperature={Temperature}, MaxTokens={MaxTokens}");
+        await JSRuntime.InvokeVoidAsync("closeModal", "settingsModal");
     }
 
-    class Conversation
+    async Task ScrollToBottom()
+    {
+        await JSRuntime.InvokeVoidAsync("scrollToBottom", "chatMessages");
+    }
+
+    public class Conversation
     {
         public string Title { get; set; } = "";
         public List<Message> Messages { get; set; } = new();
     }
 
-    class Message
+    public class Message
     {
         public bool IsUser { get; set; }
         public string Content { get; set; } = "";

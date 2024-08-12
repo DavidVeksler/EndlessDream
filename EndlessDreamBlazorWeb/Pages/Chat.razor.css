@@ -30,3 +30,18 @@
          transform: scale(1.0);
      }
  }
+
+
+.chat-container {
+    height: calc(100vh - 56px);
+    overflow-y: hidden;
+}
+
+.chat-messages {
+    height: calc(100% - 60px);
+    overflow-y: auto;
+}
+
+.chat-input {
+    height: 60px;
+}

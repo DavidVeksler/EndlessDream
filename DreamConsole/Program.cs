@@ -9,9 +9,17 @@ var llmService = new LlmService();
 
 //var (wordCount, tokenCount, elapsedMs) = await service.StreamCompletionAsync(prompt, null, Console.Write);
 
+//var fullResult = await llmService.StreamCompletionAsync(
+//    "What is the price of Bitcoin?",
+//    //systemPrompt: "You are a quantum physics expert. Explain concepts simply.",
+//    onContent: Console.Write,
+//    temperature: 0.8f,
+//    maxTokens: 200
+//);
+
 var fullResult = await llmService.StreamCompletionAsync(
-    "Explain quantum computing",
-    systemPrompt: "You are a quantum physics expert. Explain concepts simply.",
+    "What is the weather in Denver?",
+    //systemPrompt: "You are a quantum physics expert. Explain concepts simply.",
     onContent: Console.Write,
     temperature: 0.8f,
     maxTokens: 200
