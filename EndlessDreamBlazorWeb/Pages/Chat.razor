@@ -1,0 +1,124 @@
+﻿@page "/chat"
+@inject LlmService LlmService
+@using System.Text
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">WebLLM Chat</h5>
+                    <div class="mb-3">
+                        <button class="btn btn-outline-secondary w-100" @onclick="NewChat">New Chat</button>
+                    </div>
+                    <div class="list-group">
+                        @foreach (var chat in Chats)
+                        {
+                            <button class="list-group-item list-group-item-action @(chat == CurrentChat ? "active" : "")" @onclick="() => SelectChat(chat)">
+                                @chat.Title
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">@CurrentChat.Title</h5>
+                    <div class="chat-messages" style="height: 400px; overflow-y: auto;">
+                        @foreach (var message in CurrentChat.Messages)
+                        {
+                            <div class="@(message.IsUser ? "text-end" : "")">
+                                <span class="badge bg-@(message.IsUser ? "primary" : "secondary")">@(message.IsUser ? "You" : "AI")</span>
+                                <p>@message.Content</p>
+                            </div>
+                        }
+                    </div>
+                    <div class="mt-3">
+                        <div class="input-group">
+                            <input type="text" class="form-control" @bind="UserInput" @onkeyup="HandleKeyUp" placeholder="Type your message...">
+                            <button class="btn btn-primary" @onclick="SendMessage" disabled="@IsSending">
+                                @if (IsSending)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-send"></i>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    List<Conversation> Chats = new();
+    Conversation CurrentChat = new();
+    string UserInput = "";
+    bool IsSending = false;
+
+    protected override void OnInitialized()
+    {
+        NewChat();
+    }
+
+    void NewChat()
+    {
+        var chat = new Conversation { Title = $"Chat {Chats.Count + 1}" };
+        Chats.Add(chat);
+        CurrentChat = chat;
+    }
+
+    void SelectChat(Conversation chat) => CurrentChat = chat;
+
+    async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SendMessage();
+    }
+
+    async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(UserInput) || IsSending) return;
+
+        IsSending = true;
+        CurrentChat.Messages.Add(new Message { IsUser = true, Content = UserInput });
+        var userMessage = UserInput;
+        UserInput = "";
+        StateHasChanged();
+
+        var aiMessage = new Message { IsUser = false, Content = "" };
+        CurrentChat.Messages.Add(aiMessage);
+
+        var sb = new StringBuilder();
+        var result = await LlmService.StreamCompletionAsync(
+            userMessage,
+            onContent: content =>
+            {
+                sb.Append(content);
+                aiMessage.Content = sb.ToString();
+                InvokeAsync(StateHasChanged);
+            }
+        );
+
+        aiMessage.Content = sb.ToString();
+        IsSending = false;
+        StateHasChanged();
+    }
+
+    class Conversation
+    {
+        public string Title { get; set; } = "";
+        public List<Message> Messages { get; set; } = new();
+    }
+
+    class Message
+    {
+        public bool IsUser { get; set; }
+        public string Content { get; set; } = "";
+    }
+}
