@@ -1,0 +1,32 @@
+﻿.typing-indicator {
+    display: flex;
+    padding: 10px;
+}
+
+.typing-indicator span {
+    height: 10px;
+    width: 10px;
+    background-color: #9E9EA1;
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 1px;
+    animation: bounce 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+     0%, 80%, 100% {
+         transform: scale(0);
+     }
+
+     40% {
+         transform: scale(1.0);
+     }
+ }

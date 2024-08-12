@@ -11,6 +11,23 @@ public class LlmService
         _client = new HttpClient { BaseAddress = new Uri(baseUrl) };
     }
 
+    //Supported payload parameters
+    //    For an explanation for each parameter, see https://platform.openai.com/docs/api-reference/chat/create.
+
+    //model
+    //    top_p
+    //top_k
+    //    messages
+    //temperature
+    //    max_tokens
+    //stream
+    //    stop
+    //presence_penalty
+    //    frequency_penalty
+    //logit_bias
+    //    repeat_penalty
+    //seed
+
    public async Task<(int WordCount, int TokenCount, long ElapsedMs)> StreamCompletionAsync(
         string userPrompt,
         string? systemPrompt = null,

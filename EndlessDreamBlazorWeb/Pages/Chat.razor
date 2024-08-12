@@ -2,55 +2,126 @@
 @inject LlmService LlmService
 @using System.Text
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">WebLLM Chat</h5>
-                    <div class="mb-3">
-                        <button class="btn btn-outline-secondary w-100" @onclick="NewChat">New Chat</button>
+<div class="container-fluid vh-100 d-flex flex-column bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="bi bi-robot"></i> WebLLM Chat</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" @onclick="NewChat"><i class="bi bi-plus-circle"></i> New Chat</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" @onclick="OpenSettingsModal"><i class="bi bi-gear"></i> Settings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="row flex-grow-1 overflow-hidden">
+        <div class="col-md-3 d-flex flex-column p-3 border-end">
+            <div class="list-group overflow-auto rounded-3 shadow-sm">
+                @foreach (var chat in Chats)
+                {
+                    <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(chat == CurrentChat ? "active" : "")" @onclick="() => SelectChat(chat)">
+                        <span><i class="bi bi-chat-left-text"></i> @chat.Title</span>
+                        <span class="badge bg-primary rounded-pill">@chat.Messages.Count</span>
+                    </button>
+                }
+            </div>
+        </div>
+        <div class="col-md-9 d-flex flex-column p-3">
+            <div class="card flex-grow-1 shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">@CurrentChat.Title</h5>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="modelDropdown" data-bs-toggle="dropdown">
+                            @SelectedModel.Id
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="modelDropdown">
+                            @foreach (var model in Models)
+                            {
+                                <li><a class="dropdown-item" href="#" @onclick="() => SelectModel(model)">@model.Id</a></li>
+                            }
+                        </ul>
                     </div>
-                    <div class="list-group">
-                        @foreach (var chat in Chats)
-                        {
-                            <button class="list-group-item list-group-item-action @(chat == CurrentChat ? "active" : "")" @onclick="() => SelectChat(chat)">
-                                @chat.Title
-                            </button>
-                        }
+                </div>
+                <div class="card-body overflow-auto" style="height: 0;">
+                    @foreach (var message in CurrentChat.Messages)
+                    {
+                        <div class="d-flex @(message.IsUser ? "justify-content-end" : "justify-content-start") mb-3">
+                            <div class="card @(message.IsUser ? "bg-primary text-white" : "bg-light") shadow-sm" style="max-width: 75%;">
+                                <div class="card-body">
+                                    <p class="card-text mb-0">@message.Content</p>
+                                </div>
+                                <div class="card-footer text-muted small d-flex justify-content-between align-items-center">
+                                    <span>@(message.IsUser ? "You" : "AI")</span>
+                                    <span>@message.Timestamp.ToString("g")</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    @if (IsSending)
+                    {
+                        <div class="d-flex justify-content-start mb-3">
+                            <div class="card bg-light shadow-sm">
+                                <div class="card-body">
+                                    <div class="typing-indicator">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="card-footer">
+                    <div class="input-group">
+                        <input type="text" class="form-control" @bind="UserInput" @onkeyup="HandleKeyUp" placeholder="Type your message...">
+                        <button class="btn btn-primary" @onclick="SendMessage" disabled="@IsSending">
+                            @if (IsSending)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-send"></i>
+                                <span>Send</span>
+                            }
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-9">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">@CurrentChat.Title</h5>
-                    <div class="chat-messages" style="height: 400px; overflow-y: auto;">
-                        @foreach (var message in CurrentChat.Messages)
-                        {
-                            <div class="@(message.IsUser ? "text-end" : "")">
-                                <span class="badge bg-@(message.IsUser ? "primary" : "secondary")">@(message.IsUser ? "You" : "AI")</span>
-                                <p>@message.Content</p>
-                            </div>
-                        }
-                    </div>
-                    <div class="mt-3">
-                        <div class="input-group">
-                            <input type="text" class="form-control" @bind="UserInput" @onkeyup="HandleKeyUp" placeholder="Type your message...">
-                            <button class="btn btn-primary" @onclick="SendMessage" disabled="@IsSending">
-                                @if (IsSending)
-                                {
-                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-send"></i>
-                                }
-                            </button>
-                        </div>
-                    </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="settingsModalLabel">Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="temperatureRange" class="form-label">Temperature: @Temperature</label>
+                    <input type="range" class="form-range" min="0" max="1" step="0.1" id="temperatureRange" @bind="Temperature">
                 </div>
+                <div class="mb-3">
+                    <label for="maxTokens" class="form-label">Max Tokens: @MaxTokens</label>
+                    <input type="number" class="form-control" id="maxTokens" @bind="MaxTokens">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" @onclick="SaveSettings" data-bs-dismiss="modal">Save changes</button>
             </div>
         </div>
     </div>
@@ -61,10 +132,24 @@
     Conversation CurrentChat = new();
     string UserInput = "";
     bool IsSending = false;
+    List<Model> Models = new();
+    Model SelectedModel = new Model { Id = "Default Model" };
+    float Temperature = 0.7f;
+    int MaxTokens = 150;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         NewChat();
+        await LoadModels();
+    }
+
+    async Task LoadModels()
+    {
+        Models = await LlmService.GetModelsAsync();
+        if (Models.Any())
+        {
+            SelectedModel = Models.First();
+        }
     }
 
     void NewChat()
@@ -76,6 +161,8 @@
 
     void SelectChat(Conversation chat) => CurrentChat = chat;
 
+    void SelectModel(Model model) => SelectedModel = model;
+
     async Task HandleKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter") await SendMessage();
@@ -86,28 +173,44 @@
         if (string.IsNullOrWhiteSpace(UserInput) || IsSending) return;
 
         IsSending = true;
-        CurrentChat.Messages.Add(new Message { IsUser = true, Content = UserInput });
+        CurrentChat.Messages.Add(new Message { IsUser = true, Content = UserInput, Timestamp = DateTime.Now });
         var userMessage = UserInput;
         UserInput = "";
         StateHasChanged();
 
-        var aiMessage = new Message { IsUser = false, Content = "" };
+        var aiMessage = new Message { IsUser = false, Content = "", Timestamp = DateTime.Now };
         CurrentChat.Messages.Add(aiMessage);
 
         var sb = new StringBuilder();
         var result = await LlmService.StreamCompletionAsync(
             userMessage,
+            systemPrompt: $"You are using the {SelectedModel.Id} model.",
             onContent: content =>
             {
                 sb.Append(content);
                 aiMessage.Content = sb.ToString();
                 InvokeAsync(StateHasChanged);
-            }
+            },
+            temperature: Temperature,
+            maxTokens: MaxTokens
         );
 
         aiMessage.Content = sb.ToString();
         IsSending = false;
         StateHasChanged();
+    }
+
+    void OpenSettingsModal()
+    {
+        // In a real implementation, you'd use JS interop to open the modal
+        // For simplicity, we'll just log a message
+        Console.WriteLine("Opening settings modal");
+    }
+
+    void SaveSettings()
+    {
+        // In a real implementation, you might want to save these settings to local storage or a backend
+        Console.WriteLine($"Saved settings: Temperature={Temperature}, MaxTokens={MaxTokens}");
     }
 
     class Conversation
@@ -120,5 +223,6 @@
     {
         public bool IsUser { get; set; }
         public string Content { get; set; } = "";
+        public DateTime Timestamp { get; set; }
     }
 }
