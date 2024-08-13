@@ -9,23 +9,19 @@
 
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="flex-column">
+        
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <i class="bi bi-house-door" aria-hidden="true"></i> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="image-generator">
+            <NavLink class="nav-link" href="image-generator" Match="NavLinkMatch.Prefix">
                 <i class="bi bi-image" aria-hidden="true"></i> Image Generator
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="coinprices">
+            <NavLink class="nav-link" href="coinprices" Match="NavLinkMatch.Prefix">
                 <i class="bi bi-currency-exchange" aria-hidden="true"></i> Coin Prices
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="chat">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.Prefix">
                 <i class="bi bi-chat-dots" aria-hidden="true"></i> Chat
             </NavLink>
         </div>

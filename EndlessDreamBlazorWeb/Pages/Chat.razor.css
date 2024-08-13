@@ -1,4 +1,18 @@
-﻿.typing-indicator {
+﻿.chat-container {
+    height: calc(100vh - 56px);
+    overflow-y: hidden;
+}
+
+.chat-messages {
+    height: calc(100% - 60px);
+    overflow-y: auto;
+}
+
+.chat-input {
+    height: 60px;
+}
+
+.typing-indicator {
     display: flex;
     padding: 10px;
 }
@@ -22,26 +36,11 @@
 }
 
 @keyframes bounce {
-     0%, 80%, 100% {
-         transform: scale(0);
-     }
+    0%, 80%, 100% {
+        transform: scale(0);
+    }
 
-     40% {
-         transform: scale(1.0);
-     }
- }
-
-
-.chat-container {
-    height: calc(100vh - 56px);
-    overflow-y: hidden;
-}
-
-.chat-messages {
-    height: calc(100% - 60px);
-    overflow-y: auto;
-}
-
-.chat-input {
-    height: 60px;
+    40% {
+        transform: scale(1.0);
+    }
 }
