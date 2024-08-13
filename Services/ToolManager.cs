@@ -7,7 +7,9 @@
         _tools = new Dictionary<string, ITool>
         {
             { "get_bitcoin_price", new BitcoinPriceTool() },
-            { "get_weather", new WeatherTool() }
+            { "get_weather", new WeatherTool() },
+            { "scrape_webpage", new WebScrapingTool() },
+            
         };
     }
 

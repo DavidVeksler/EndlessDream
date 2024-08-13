@@ -38,12 +38,17 @@ public class LlmService
 IF NEEDED,use external tools:
 - get_bitcoin_price: Retrieves the current price of Bitcoin in USD.
 - get_weather(location): Retrieves the current weather for the specified location.
+- scrape_webpage(url): Scrapes the webpage at the given URL and returns its title, description, and a preview of the body content.
 
-To use a tool, respond with the tool name followed by parameters in parentheses, if any. For example:
+
+To use a tool, respond with the tool name followed by parameters in parentheses, if any. 
 - get_bitcoin_price
-- get_weather(location)
+- get_weather(London)
+- scrape_webpage(https://example.com)
 
-After using the necessary tools, you MUST provide a final answer to the user's query.
+
+
+After tools, you MUST provide a final answer to the user's query.
 Your final answer should not be a tool invocation.
 
 Respond ONLY with either:
