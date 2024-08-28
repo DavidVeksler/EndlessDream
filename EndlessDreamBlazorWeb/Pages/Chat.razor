@@ -19,7 +19,7 @@
 </HeadContent>
 
 
-<div class="container-fluid vh-100 d-flex flex-column">
+<div class="d-flex flex-column vh-100">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="chat#"><i class="bi bi-robot"></i> LLM Chat</a>
@@ -39,8 +39,8 @@
         </div>
     </nav>
 
-    <div class="row flex-grow-1 overflow-hidden">
-        <div class="col-md-3 col-lg-2 d-none d-md-flex flex-column p-3 border-end overflow-auto">
+    <div class="flex-grow-1 d-flex overflow-hidden">
+        <div class="col-md-3 col-lg-2 d-none d-md-block border-end overflow-auto">
             <div class="list-group">
                 @foreach (var chat in Chats)
                 {
@@ -51,8 +51,8 @@
                 }
             </div>
         </div>
-        <div class="col-md-9 col-lg-10 d-flex flex-column p-3">
-            <div class="card flex-grow-1 shadow d-flex flex-column">
+        <div class="col p-0 d-flex flex-column">
+            <div class="card h-100 d-flex flex-column">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 text-truncate">@CurrentChat.Title</h5>
                     <div class="dropdown">
@@ -67,13 +67,13 @@
                         </ul>
                     </div>
                 </div>
-                <div class="card-body overflow-auto flex-grow-1" id="chatMessages">
+                <div class="card-body flex-grow-1 overflow-auto" @ref="chatMessagesRef" id="chatMessages">
                     @foreach (var message in CurrentChat.Messages)
                     {
                         <div class="d-flex @(message.IsUser ? "justify-content-end" : "justify-content-start") mb-3">
                             <div class="card @(message.IsUser ? "bg-primary text-white" : "bg-light") shadow-sm" style="max-width: 75%;">
                                 <div class="card-body">
-                                    <p class="card-text mb-0">@message.Content</p>
+                                    <pre class="card-text mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0;">@message.Content</pre>
                                 </div>
                                 <div class="card-footer text-muted small d-flex justify-content-between align-items-center">
                                     <span>@(message.IsUser ? "You" : "AI")</span>
@@ -151,12 +151,22 @@
     List<Model> Models = new();
     Model SelectedModel = new Model { Id = "Default Model" };
     float Temperature = 0.7f;
-    int MaxTokens = 150;
+    int MaxTokens = 99999;
+    private ElementReference chatMessagesRef;
 
     protected override async Task OnInitializedAsync()
     {
         NewChat();
         await LoadModels();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeChat");
+        }
+        await ScrollToBottom();
     }
 
     async Task LoadModels()
@@ -180,6 +190,7 @@
     {
         CurrentChat = chat;
         StateHasChanged();
+        InvokeAsync(ScrollToBottom);
     }
 
     void SelectModel(Model model)
@@ -202,6 +213,7 @@
         var userMessage = UserInput;
         UserInput = "";
         StateHasChanged();
+        await ScrollToBottom();
 
         var aiMessage = new Message { IsUser = false, Content = "", Timestamp = DateTime.Now };
         CurrentChat.Messages.Add(aiMessage);
@@ -210,11 +222,12 @@
         var result = await LlmService.StreamCompletionAsync(
             userMessage,
             systemPrompt: $"You are using the {SelectedModel.Id} model.",
-            onContent: content =>
+            onContent: async content =>
             {
                 sb.Append(content);
                 aiMessage.Content = sb.ToString();
-                InvokeAsync(StateHasChanged);
+                await InvokeAsync(StateHasChanged);
+                await ScrollToBottom();
             },
             temperature: Temperature,
             maxTokens: MaxTokens
@@ -225,6 +238,7 @@
         StateHasChanged();
         await ScrollToBottom();
     }
+
 
     async Task OpenSettingsModal()
     {
@@ -238,7 +252,7 @@
 
     async Task ScrollToBottom()
     {
-        await JSRuntime.InvokeVoidAsync("scrollToBottom", "chatMessages");
+        await JSRuntime.InvokeVoidAsync("scrollToBottom", chatMessagesRef);
     }
 
     public class Conversation
