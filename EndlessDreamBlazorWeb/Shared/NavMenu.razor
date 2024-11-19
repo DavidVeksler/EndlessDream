@@ -1,40 +1,36 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿<nav class="navbar navbar-expand-lg navbar-dark fixed-top">
     <div class="container-fluid">
         <a class="navbar-brand" href="">EndlessDreamBlazorWeb</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+        <button class="navbar-toggler" type="button" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
+
+        <div class="@NavMenuCssClass navbar-collapse">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="image-generator">
+                        <i class="bi bi-image"></i> Image Generator
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="coinprices">
+                        <i class="bi bi-currency-exchange"></i> Coin Prices
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="chat">
+                        <i class="bi bi-chat-dots"></i> Chat
+                    </NavLink>
+                </li>
+            </ul>
+        </div>
     </div>
-</div>
+</nav>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="image-generator" Match="NavLinkMatch.Prefix">
-                <i class="bi bi-image" aria-hidden="true"></i> Image Generator
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="coinprices" Match="NavLinkMatch.Prefix">
-                <i class="bi bi-currency-exchange" aria-hidden="true"></i> Coin Prices
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="chat" Match="NavLinkMatch.Prefix">
-                <i class="bi bi-chat-dots" aria-hidden="true"></i> Chat
-            </NavLink>
-        </div>
-    </nav>
-</div>
-
+                
 @code {
     private bool collapseNavMenu = true;
-
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
+    private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
 }
+
