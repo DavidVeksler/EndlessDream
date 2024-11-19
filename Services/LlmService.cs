@@ -32,6 +32,12 @@ using System.Text.RegularExpressions;
 //4: DO NOT GBUESS OR SPECULATE
 //5. If you don't need to use a tool, simply respond to the user's query directly.
 
+using System.Diagnostics;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
 public class LlmService
 {
     private const string SystemPromptTemplate = @"You are an AI assistant.
@@ -40,13 +46,10 @@ IF NEEDED,use external tools:
 - get_weather(location): Retrieves the current weather for the specified location.
 - scrape_webpage(url): Scrapes the webpage at the given URL and returns its title, description, and a preview of the body content.
 
-
 To use a tool, respond with the tool name followed by parameters in parentheses, if any. 
 - get_bitcoin_price
 - get_weather(London)
 - scrape_webpage(https://example.com)
-
-
 
 After tools, you MUST provide a final answer to the user's query.
 Your final answer should not be a tool invocation.
@@ -69,7 +72,7 @@ The tool's response will be provided in the next message, wrapped in <tool_msg><
     public async Task<(int WordCount, int TokenCount, long ElapsedMs)> StreamCompletionAsync(
         string userPrompt,
         string systemPrompt = null,
-        Action<string> onContent = null,
+        Func<string, Task> onContentAsync = null,
         float temperature = 0.7f,
         int maxTokens = -1)
     {
@@ -84,85 +87,77 @@ The tool's response will be provided in the next message, wrapped in <tool_msg><
         var stopwatch = Stopwatch.StartNew();
         var fullResponse = new StringBuilder();
 
-        const int maxInteractions = 5;
-        var lastToolUsed = "";
-        var repeatedToolUseCount = 0;
-
-        for (var i = 0; i < maxInteractions; i++)
+        await GetLlmResponseAsync(messages, temperature, maxTokens, async content =>
         {
-            var (partialResponse, partialWordCount, partialTokenCount) =
-                await GetLlmResponseAsync(messages, temperature, maxTokens);
-            fullResponse.Append(partialResponse);
-            wordCount += partialWordCount;
-            tokenCount += partialTokenCount;
-
-            var (toolName, parameters) = ParseToolInvocation(partialResponse.Trim());
-
-            if (_toolManager.HasTool(toolName))
+            fullResponse.Append(content);
+            wordCount += content.Split().Length;
+            if (onContentAsync != null)
             {
-                if (toolName == lastToolUsed)
-                {
-                    repeatedToolUseCount++;
-                    if (repeatedToolUseCount >= 2)
-                    {
-                        messages.Add(new
-                        {
-                            role = "system",
-                            content =
-                                "You have used the same tool multiple times. Please provide a final answer based on the information you have."
-                        });
-                        continue;
-                    }
-                }
-                else
-                {
-                    repeatedToolUseCount = 0;
-                }
-
-                lastToolUsed = toolName;
-                var toolResponse = await _toolManager.ExecuteToolAsync(toolName, parameters);
-                var wrappedToolResponse = $"<tool_msg>{toolResponse}</tool_msg>";
-                messages.Add(new { role = "assistant", content = partialResponse.Trim() });
-                messages.Add(new { role = "user", content = wrappedToolResponse });
+                await onContentAsync(content);
             }
-            else
-            {
-                onContent?.Invoke(partialResponse);
-                break;
-            }
-        }
-
-        if (fullResponse.Length == 0) onContent?.Invoke("Error: No valid response received from the LLM.");
+        });
 
         stopwatch.Stop();
         return (wordCount, tokenCount, stopwatch.ElapsedMilliseconds);
     }
 
-    private (string ToolName, string[] Parameters) ParseToolInvocation(string input)
-    {
-        return Regex.Match(input.Trim(), @"^(\w+)(?:\((.*?)\))?$") is { Success: true } match
-            ? (match.Groups[1].Value,
-                match.Groups[2].Success
-                    ? match.Groups[2].Value.Split(',').Select(p => p.Trim()).ToArray()
-                    : Array.Empty<string>())
-            : (string.Empty, Array.Empty<string>());
-    }
-
-    private async Task<(string Response, int WordCount, int TokenCount)> GetLlmResponseAsync(
+    private async Task GetLlmResponseAsync(
         List<object> messages,
         float temperature,
-        int maxTokens)
+        int maxTokens,
+        Func<string, Task> onContentAsync)
     {
-        var request = new { messages, temperature, max_tokens = maxTokens, stream = false };
-        var response = await _client.PostAsJsonAsync("/v1/chat/completions", request);
+        var request = new { messages, temperature, max_tokens = maxTokens, stream = true };
+
+        // Create an HttpRequestMessage
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions")
+        {
+            Content = JsonContent.Create(request)
+        };
+
+        // Send the request with HttpCompletionOption.ResponseHeadersRead
+        var response = await _client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-        var content = result.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
-        var tokenCount = result.GetProperty("usage").GetProperty("total_tokens").GetInt32();
+        using var stream = await response.Content.ReadAsStreamAsync();
+        using var reader = new StreamReader(stream);
 
-        return (content, content.Split().Length, tokenCount);
+        while (!reader.EndOfStream)
+        {
+            var line = await reader.ReadLineAsync();
+
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            if (line.StartsWith("data: "))
+            {
+                var json = line.Substring(6);
+
+                if (json.Trim() == "[DONE]")
+                    break;
+
+                var parsed = JsonSerializer.Deserialize<JsonElement>(json);
+
+                if (parsed.TryGetProperty("choices", out var choices))
+                {
+                    var delta = choices[0].GetProperty("delta");
+
+                    if (delta.TryGetProperty("content", out var contentElement))
+                    {
+                        var content = contentElement.GetString();
+                        if (!string.IsNullOrEmpty(content))
+                        {
+                            if (onContentAsync != null)
+                            {
+                                await onContentAsync(content);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+
 
     public async Task<List<Model>> GetModelsAsync()
     {
@@ -185,6 +180,5 @@ The tool's response will be provided in the next message, wrapped in <tool_msg><
         var response = await _client.PostAsJsonAsync("/v1/completions", request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<CompletionResponse>() ?? new CompletionResponse();
-       
     }
 }

@@ -220,21 +220,24 @@
         CurrentChat.Messages.Add(aiMessage);
 
         var sb = new StringBuilder();
-        var result = await LlmService.StreamCompletionAsync(
+
+        await LlmService.StreamCompletionAsync(
             userMessage,
             systemPrompt: $"You are using the {SelectedModel.Id} model.",
-            onContent: async content =>
+            onContentAsync: async content =>
             {
                 sb.Append(content);
                 aiMessage.Content = sb.ToString();
-                await InvokeAsync(StateHasChanged);
-                await ScrollToBottom();
+                await InvokeAsync(async () =>
+                {
+                    StateHasChanged();
+                    await ScrollToBottom();
+                });
             },
             temperature: Temperature,
             maxTokens: MaxTokens
         );
 
-        aiMessage.Content = sb.ToString();
         IsSending = false;
         StateHasChanged();
         await ScrollToBottom();
