@@ -1,7 +1,4 @@
-﻿// Remove the unnecessary functions
-// window.initializeChat and window.adjustChatHeight can be deleted
-
-window.scrollToBottom = (element) => {
+﻿window.scrollToBottom = (element) => {
     if (element) {
         element.scrollTop = element.scrollHeight;
     }

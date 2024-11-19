@@ -12,7 +12,7 @@
     <!-- Add your other meta tags and Open Graph tags here -->
 </HeadContent>
 
-<div class="d-flex flex-column h-100">
+<div class="d-flex flex-column vh-100">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
@@ -34,9 +34,9 @@
     </nav>
 
     <!-- Main Content Area -->
-    <div class="d-flex flex-grow-1 overflow-hidden">
+    <div class="chat-main">
         <!-- Sidebar -->
-        <div class="d-none d-md-block border-end overflow-auto" style="width: 250px;">
+        <div class="chat-sidebar d-none d-md-block">
             <div class="list-group">
                 @foreach (var chat in Chats)
                 {
@@ -49,72 +49,70 @@
         </div>
 
         <!-- Chat Area -->
-        <div class="flex-grow-1 d-flex flex-column">
-            <div class="card flex-grow-1 d-flex flex-column">
-                <!-- Card Header -->
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-truncate">@CurrentChat.Title</h5>
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="modelDropdown" data-bs-toggle="dropdown">
-                            @SelectedModel.Id
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="modelDropdown">
-                            @foreach (var model in Models)
-                            {
-                                <li><a class="dropdown-item" @onclick="() => SelectModel(model)">@model.Id</a></li>
-                            }
-                        </ul>
-                    </div>
+        <div class="chat-content">
+            <!-- Header -->
+            <div class="chat-header">
+                <h5 class="mb-0 text-truncate">@CurrentChat.Title</h5>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="modelDropdown" data-bs-toggle="dropdown">
+                        @SelectedModel.Id
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="modelDropdown">
+                        @foreach (var model in Models)
+                        {
+                            <li><a class="dropdown-item" @onclick="() => SelectModel(model)">@model.Id</a></li>
+                        }
+                    </ul>
                 </div>
+            </div>
 
-                <!-- Card Body -->
-                <div class="card-body flex-grow-1 overflow-auto" @ref="chatMessagesRef" id="chatMessages" style="min-height: 0;">
-                    @foreach (var message in CurrentChat.Messages)
-                    {
-                        <div class="d-flex @(message.IsUser ? "justify-content-end" : "justify-content-start") mb-3">
-                            <div class="card @(message.IsUser ? "bg-primary text-white" : "bg-light") shadow-sm" style="max-width: 75%;">
-                                <div class="card-body">
-                                    <pre class="card-text mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0;">@message.Content</pre>
-                                </div>
-                                <div class="card-footer text-muted small d-flex justify-content-between align-items-center">
-                                    <span>@(message.IsUser ? "You" : "AI")</span>
-                                    <span>@message.Timestamp.ToString("g")</span>
+            <!-- Messages -->
+            <div class="chat-messages" @ref="chatMessagesRef" id="chatMessages">
+                @foreach (var message in CurrentChat.Messages)
+                {
+                    <div class="d-flex @(message.IsUser ? "justify-content-end" : "justify-content-start") mb-3">
+                        <div class="card @(message.IsUser ? "bg-primary text-white" : "bg-light") shadow-sm" style="max-width: 75%;">
+                            <div class="card-body">
+                                <pre class="card-text mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0;">@message.Content</pre>
+                            </div>
+                            <div class="card-footer text-muted small d-flex justify-content-between align-items-center">
+                                <span>@(message.IsUser ? "You" : "AI")</span>
+                                <span>@message.Timestamp.ToString("g")</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (IsSending)
+                {
+                    <div class="d-flex justify-content-start mb-3">
+                        <div class="card bg-light shadow-sm">
+                            <div class="card-body">
+                                <div class="typing-indicator">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
                                 </div>
                             </div>
                         </div>
-                    }
-                    @if (IsSending)
-                    {
-                        <div class="d-flex justify-content-start mb-3">
-                            <div class="card bg-light shadow-sm">
-                                <div class="card-body">
-                                    <div class="typing-indicator">
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-
-                <!-- Card Footer -->
-                <div class="card-footer">
-                    <div class="input-group">
-                        <input type="text" class="form-control" @bind="UserInput" @onkeyup="HandleKeyUp" placeholder="Type your message...">
-                        <button class="btn btn-primary" @onclick="SendMessage" disabled="@IsSending">
-                            @if (IsSending)
-                            {
-                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                            }
-                            else
-                            {
-                                <i class="bi bi-send"></i>
-                                <span class="d-none d-md-inline">Send</span>
-                            }
-                        </button>
                     </div>
+                }
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input" style="margin-bottom: 30px; position: relative;">
+                <div class="input-group">
+                    <input type="text" class="form-control" @bind="UserInput" @onkeyup="HandleKeyUp" placeholder="Type your message...">
+                    <button class="btn btn-primary" @onclick="SendMessage" disabled="@IsSending">
+                        @if (IsSending)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-send"></i>
+                            <span class="d-none d-md-inline">Send</span>
+                        }
+                    </button>
                 </div>
             </div>
         </div>
