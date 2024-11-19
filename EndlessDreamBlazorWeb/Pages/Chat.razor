@@ -9,17 +9,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Engage in intelligent conversations with our AI-powered chat. Experience the future of communication with advanced language models and intuitive interface." />
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="AI-Powered Chat | Engage in Intelligent Conversations" />
-    <meta property="twitter:description" content="Experience the future of communication with our AI-powered chat. Engage in intelligent conversations using advanced language models." />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="AI-Powered Chat | Engage in Intelligent Conversations" />
-    <meta property="og:description" content="Experience the future of communication with our AI-powered chat. Engage in intelligent conversations using advanced language models." />
-    @* <meta property="twitter:image" content="https://yourdomain.com/images/ai-chat-preview.jpg" /> *@
+    <!-- Add your other meta tags and Open Graph tags here -->
 </HeadContent>
 
-
-<div class="d-flex flex-column vh-100">
+<div class="d-flex flex-column h-100">
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="chat#"><i class="bi bi-robot"></i> LLM Chat</a>
@@ -29,18 +23,20 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <button class="nav-link" @onclick="NewChat"><i class="bi bi-plus-circle"></i> New Chat</button>
+                        <button class="nav-link btn btn-link" @onclick="NewChat"><i class="bi bi-plus-circle"></i> New Chat</button>
                     </li>
                     <li class="nav-item">
-                        <button class="nav-link" @onclick="OpenSettingsModal"><i class="bi bi-gear"></i> Settings</button>
+                        <button class="nav-link btn btn-link" @onclick="OpenSettingsModal"><i class="bi bi-gear"></i> Settings</button>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <div class="flex-grow-1 d-flex overflow-hidden">
-        <div class="col-md-3 col-lg-2 d-none d-md-block border-end overflow-auto">
+    <!-- Main Content Area -->
+    <div class="d-flex flex-grow-1 overflow-hidden">
+        <!-- Sidebar -->
+        <div class="d-none d-md-block border-end overflow-auto" style="width: 250px;">
             <div class="list-group">
                 @foreach (var chat in Chats)
                 {
@@ -51,8 +47,11 @@
                 }
             </div>
         </div>
-        <div class="col p-0 d-flex flex-column">
-            <div class="card h-100 d-flex flex-column">
+
+        <!-- Chat Area -->
+        <div class="flex-grow-1 d-flex flex-column">
+            <div class="card flex-grow-1 d-flex flex-column">
+                <!-- Card Header -->
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 text-truncate">@CurrentChat.Title</h5>
                     <div class="dropdown">
@@ -67,7 +66,9 @@
                         </ul>
                     </div>
                 </div>
-                <div class="card-body flex-grow-1 overflow-auto" @ref="chatMessagesRef" id="chatMessages">
+
+                <!-- Card Body -->
+                <div class="card-body flex-grow-1 overflow-auto" @ref="chatMessagesRef" id="chatMessages" style="min-height: 0;">
                     @foreach (var message in CurrentChat.Messages)
                     {
                         <div class="d-flex @(message.IsUser ? "justify-content-end" : "justify-content-start") mb-3">
@@ -97,6 +98,8 @@
                         </div>
                     }
                 </div>
+
+                <!-- Card Footer -->
                 <div class="card-footer">
                     <div class="input-group">
                         <input type="text" class="form-control" @bind="UserInput" @onkeyup="HandleKeyUp" placeholder="Type your message...">
@@ -118,6 +121,7 @@
     </div>
 </div>
 
+<!-- Settings Modal -->
 <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -126,6 +130,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- Settings Form -->
                 <div class="mb-3">
                     <label for="temperatureRange" class="form-label">Temperature: @Temperature</label>
                     <input type="range" class="form-range" min="0" max="1" step="0.1" id="temperatureRange" @bind="Temperature">
@@ -162,10 +167,6 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-        {
-            await JSRuntime.InvokeVoidAsync("initializeChat");
-        }
         await ScrollToBottom();
     }
 
@@ -238,7 +239,6 @@
         StateHasChanged();
         await ScrollToBottom();
     }
-
 
     async Task OpenSettingsModal()
     {

@@ -1,17 +1,4 @@
-﻿.chat-container {
-    height: calc(100vh - 56px);
-    overflow-y: hidden;
-}
-
-.chat-messages {
-    height: calc(100% - 60px);
-    overflow-y: auto;
-}
-
-.chat-input {
-    height: 60px;
-}
-
+﻿/* Remove unnecessary height calculations and let flexbox handle the layout */
 .typing-indicator {
     display: flex;
     padding: 10px;
@@ -44,3 +31,32 @@
         transform: scale(1.0);
     }
 }
+
+
+/*////*//**/
+
+.d-flex {
+    min-height: 0;
+}
+
+.card {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.card-footer {
+    flex-shrink: 0;
+}
+
+
+/*html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}*/
