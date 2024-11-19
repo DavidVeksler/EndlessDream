@@ -62,7 +62,7 @@ The tool's response will be provided in the next message, wrapped in <tool_msg><
 
     public LlmService(HttpClient client = null)
     {
-        _client = client ?? new HttpClient { BaseAddress = new Uri("http://localhost:1234") };
+        _client = client ?? new HttpClient { BaseAddress = new Uri("http://192.168.1.250:1234") };
         _toolManager = new ToolManager();
     }
 

@@ -7,7 +7,7 @@ namespace EndlessDreamBlazorWeb.Services
     public class ImageGenerator
     {
         private static readonly HttpClient client = new();
-        private static readonly string url = "http://192.168.1.144:8080";
+        private static readonly string url = "http://192.168.1.250:8080";
         private JsonElement error;
         internal ExifProfile? exifProfile;
         private const string MODEL_HASH = "c8df560d29";
