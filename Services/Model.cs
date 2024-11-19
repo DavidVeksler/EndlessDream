@@ -1,6 +1,8 @@
 ﻿public class Model
 {
     public string Id { get; set; } = "";
+
+    public string EndpointUrl { get; set; }
     public string Object { get; set; } = "";
     public string OwnedBy { get; set; } = "";
     public List<object> Permission { get; set; } = new();

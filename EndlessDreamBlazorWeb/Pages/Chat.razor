@@ -99,7 +99,7 @@
             </div>
 
             <!-- Input Area -->
-            <div class="chat-input" style="margin-bottom: 30px; position: relative;">
+            <div class="chat-input" style="margin-bottom: 100px; position: relative;">
                 <div class="input-group">
                     <input type="text" class="form-control" @bind="UserInput" @onkeyup="HandleKeyUp" placeholder="Type your message...">
                     <button class="btn btn-primary" @onclick="SendMessage" disabled="@IsSending">
@@ -171,6 +171,7 @@
     async Task LoadModels()
     {
         Models = await LlmService.GetModelsAsync();
+        Models.Add(new Model() { Id = "RichAgent", EndpointUrl = "http://localhost:8000"});
         if (Models.Any())
         {
             SelectedModel = Models.First();
@@ -233,7 +234,8 @@
                 });
             },
             temperature: Temperature,
-            maxTokens: MaxTokens
+            maxTokens: MaxTokens, 
+            SelectedModel.Id
         );
 
         IsSending = false;

@@ -20,7 +20,7 @@ var llmService = new LlmService();
 var fullResult = await llmService.StreamCompletionAsync(
     "What is the weather in Denver?",
     //systemPrompt: "You are a quantum physics expert. Explain concepts simply.",
-    onContent: Console.Write,
+  //  onContentAsync: Console.Write,
     temperature: 0.8f,
     maxTokens: 200
 );
