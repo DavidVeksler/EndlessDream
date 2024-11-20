@@ -46,6 +46,7 @@ Current Information:
     private HttpClient _client;
     private readonly ToolManager _toolManager;
     private readonly Task<string> _bitcoinPriceTask;
+    private string _selectedModelId;
 
     public LlmService(HttpClient? client = null)
     {
@@ -60,8 +61,11 @@ Current Information:
         float temperature = 0.7f,
         int maxTokens = -1, 
         string selectedModelId = null)
-    
+
     {
+
+        _selectedModelId = selectedModelId;
+
         // Ensure we have the bitcoin price before continuing
         var bitcoinPrice = await _bitcoinPriceTask;
         
@@ -107,12 +111,30 @@ Current Information:
         int maxTokens,
         Func<string, Task> onContentAsync)
     {
-        var request = new { messages, temperature, max_tokens = maxTokens, stream = true };
+        // Build the request dictionary
+        var requestDict = new Dictionary<string, object>
+        {
+           
+            { "messages", messages },
+            { "temperature", temperature },
+            { "stream", true }
+        };
+
+        // Only include max_tokens if it's a valid value
+        if (maxTokens > 0)
+        {
+            requestDict["max_tokens"] = maxTokens;
+        }
+
+        if (_selectedModelId != null && _selectedModelId != "RichAgent")
+        {
+            requestDict["model"] = _selectedModelId;
+        }
 
         // Create an HttpRequestMessage
         var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions")
         {
-            Content = JsonContent.Create(request)
+            Content = JsonContent.Create(requestDict)
         };
 
         
