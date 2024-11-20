@@ -71,7 +71,7 @@
                 @foreach (var message in CurrentChat.Messages)
                 {
                     <div class="d-flex @(message.IsUser ? "justify-content-end" : "justify-content-start") mb-3">
-                        <div class="card @(message.IsUser ? "bg-primary text-white" : "bg-light") shadow-sm" style="max-width: 75%;">
+                        <div class="card @(message.IsUser ? "bg-primary text-white" : "") shadow-sm @(message.IsError ? "border-danger" : "bg-light")}" style="max-width: 75%;">
                             <div class="card-body">
                                 <pre class="card-text mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0;">@message.Content</pre>
                             </div>
@@ -209,39 +209,59 @@
         if (string.IsNullOrWhiteSpace(UserInput) || IsSending) return;
 
         IsSending = true;
+        ErrorMessage = null;
         CurrentChat.Messages.Add(new Message { IsUser = true, Content = UserInput, Timestamp = DateTime.Now });
         var userMessage = UserInput;
         UserInput = "";
         StateHasChanged();
         await ScrollToBottom();
 
-        var aiMessage = new Message { IsUser = false, Content = "", Timestamp = DateTime.Now };
-        CurrentChat.Messages.Add(aiMessage);
+        try
+        {
+            var aiMessage = new Message { IsUser = false, Content = "", Timestamp = DateTime.Now };
+            CurrentChat.Messages.Add(aiMessage);
 
-        var sb = new StringBuilder();
+            var sb = new StringBuilder();
 
-        await LlmService.StreamCompletionAsync(
-            userMessage,
-            systemPrompt: $"You are using the {SelectedModel.Id} model.",
-            onContentAsync: async content =>
-            {
-                sb.Append(content);
-                aiMessage.Content = sb.ToString();
-                await InvokeAsync(async () =>
+            await LlmService.StreamCompletionAsync(
+                userMessage,
+                systemPrompt: $"You are using the {SelectedModel.Id} model.",
+                onContentAsync: async content =>
                 {
-                    StateHasChanged();
-                    await ScrollToBottom();
-                });
-            },
-            temperature: Temperature,
-            maxTokens: MaxTokens, 
-            SelectedModel.Id
-        );
-
-        IsSending = false;
-        StateHasChanged();
-        await ScrollToBottom();
+                    sb.Append(content);
+                    aiMessage.Content = sb.ToString();
+                    await InvokeAsync(async () =>
+                    {
+                        StateHasChanged();
+                        await ScrollToBottom();
+                    });
+                },
+                temperature: Temperature,
+                maxTokens: MaxTokens,
+                SelectedModel.Id
+            );
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = new Message 
+            { 
+                IsUser = false, 
+                IsError = true,
+                Content = $"Error: {ex.Message}",
+                Timestamp = DateTime.Now 
+            };
+            CurrentChat.Messages.Add(errorMessage);
+            ErrorMessage = $"Failed to get AI response: {ex.Message}";
+        }
+        finally
+        {
+            IsSending = false;
+            StateHasChanged();
+            await ScrollToBottom();
+        }
     }
+
+    public string ErrorMessage { get; set; }
 
     async Task OpenSettingsModal()
     {
@@ -269,5 +289,6 @@
         public bool IsUser { get; set; }
         public string Content { get; set; } = "";
         public DateTime Timestamp { get; set; }
+        public bool IsError { get; set; }
     }
 }
