@@ -61,3 +61,17 @@ public class Choice
     public object Logprobs { get; set; } = new();
     public string FinishReason { get; set; } = "";
 }
+
+public class Conversation
+{
+    public string Title { get; set; } = "";
+    public List<Message> Messages { get; set; } = new();
+}
+
+public class Message
+{
+    public bool IsUser { get; set; }
+    public string Content { get; set; } = "";
+    public DateTime Timestamp { get; set; }
+    public bool IsError { get; set; }
+}

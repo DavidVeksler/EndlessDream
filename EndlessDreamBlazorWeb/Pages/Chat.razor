@@ -3,6 +3,7 @@
 @inject LlmService LlmService
 @inject IJSRuntime JSRuntime
 @using System.Text
+@using System.Text.Json
 
 <PageTitle>AI-Powered Chat | Engage in Intelligent Conversations</PageTitle>
 <HeadContent>
@@ -157,9 +158,54 @@
     int MaxTokens = 99999;
     private ElementReference chatMessagesRef;
 
+    // Optional: Add method to persist conversations
+    private async Task SaveConversationsToLocalStorage()
+    {
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
+        var json = JsonSerializer.Serialize(Chats, options);
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "chatHistory", json);
+    }
+
+    // Optional: Add method to load conversations
+    private async Task LoadConversationsFromLocalStorage()
+    {
+        try
+        {
+            var json = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "chatHistory");
+            if (!string.IsNullOrEmpty(json))
+            {
+                Chats = JsonSerializer.Deserialize<List<Conversation>>(json) ?? new List<Conversation>();
+                if (Chats.Any())
+                {
+                    CurrentChat = Chats.First();
+                }
+            }
+        }
+        catch
+        {
+            // Handle any errors loading from localStorage
+            Chats = new List<Conversation>();
+            NewChat();
+        }
+    }
+
+
+    // Optional: Add method to save after each message
+    async Task SaveCurrentState()
+    {
+        await SaveConversationsToLocalStorage();
+    }
+
+
     protected override async Task OnInitializedAsync()
     {
         NewChat();
+        await LoadModels();
+
+        await LoadConversationsFromLocalStorage();
         await LoadModels();
     }
 
@@ -224,7 +270,7 @@
             var sb = new StringBuilder();
 
             await LlmService.StreamCompletionAsync(
-                userMessage,
+                CurrentChat.Messages,  // Pass the entire conversation history
                 systemPrompt: $"You are using the {SelectedModel.Id} model.",
                 onContentAsync: async content =>
                 {
@@ -278,17 +324,5 @@
         await JSRuntime.InvokeVoidAsync("scrollToBottom", chatMessagesRef);
     }
 
-    public class Conversation
-    {
-        public string Title { get; set; } = "";
-        public List<Message> Messages { get; set; } = new();
-    }
-
-    public class Message
-    {
-        public bool IsUser { get; set; }
-        public string Content { get; set; } = "";
-        public DateTime Timestamp { get; set; }
-        public bool IsError { get; set; }
-    }
+    
 }

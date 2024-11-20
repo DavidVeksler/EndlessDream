@@ -55,40 +55,46 @@ Current Information:
         _bitcoinPriceTask = new BitcoinPriceTool().ExecuteAsync(null);
     }
 
-    public async Task<(int WordCount, int TokenCount, long ElapsedMs)> StreamCompletionAsync(string userPrompt,
+    public async Task<(int WordCount, int TokenCount, long ElapsedMs)> StreamCompletionAsync(
+        List<Message> conversationHistory,
         string? systemPrompt = null,
         Func<string, Task> onContentAsync = null,
         float temperature = 0.7f,
-        int maxTokens = -1, 
+        int maxTokens = -1,
         string selectedModelId = null)
-
     {
-
         _selectedModelId = selectedModelId;
 
-        // Ensure we have the bitcoin price before continuing
         var bitcoinPrice = await _bitcoinPriceTask;
         
-        // Format the system prompt with current date and bitcoin price
         var formattedSystemPrompt = string.Format(
             SystemPromptTemplate,
             DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss UTC"),
             bitcoinPrice,
             systemPrompt
-        ) ;
+        );
 
         if (selectedModelId == "RichAgent")
         {
-            maxTokens =  0;
-            this._client =new HttpClient { BaseAddress = new Uri("http://localhost:8000") };
+            maxTokens = 0;
+            this._client = new HttpClient { BaseAddress = new Uri("http://localhost:8000") };
         }
 
-
+        // Convert conversation history to messages format
         var messages = new List<object>
         {
-            new { role = "system", content = formattedSystemPrompt },
-            new { role = "user", content = userPrompt }
+            new { role = "system", content = formattedSystemPrompt }
         };
+
+        // Add conversation history
+        foreach (var msg in conversationHistory)
+        {
+            messages.Add(new
+            {
+                role = msg.IsUser ? "user" : "assistant",
+                content = msg.Content
+            });
+        }
 
         var wordCount = 0;
         var tokenCount = 0;
@@ -105,6 +111,8 @@ Current Information:
         stopwatch.Stop();
         return (wordCount, tokenCount, stopwatch.ElapsedMilliseconds);
     }
+
+
     private async Task GetLlmResponseAsync(
         List<object> messages,
         float temperature,
