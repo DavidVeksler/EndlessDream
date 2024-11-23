@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -29,6 +30,9 @@ using static System.DateTime;
 //SYSTEM: get_weather(London)
 //USER: Cloudy,70F
 //SYSTEM: The weather in London is Cloudy,70F
+
+
+//TODO: cancellation feature: https://claude.ai/chat/af386f51-6737-478f-8fc5-1e721741355f
 
 public class LlmService
 {
