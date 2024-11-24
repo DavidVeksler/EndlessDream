@@ -176,6 +176,11 @@
                     <input type="number" class="form-control" id="maxTokens" @bind="maxTokens">
                     <small class="form-text text-muted">Maximum length of the AI's response.</small>
                 </div>
+                <div class="mb-3">
+                    <button class="btn btn-danger" @onclick="ClearHistory">
+                        Clear Chat History
+                    </button>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -342,5 +347,14 @@
             IsSending = false;
             StateHasChanged();
         }
+    }
+
+    private async Task ClearHistory()
+    {
+        Chats.Clear();
+        await SaveChats();
+        var defaultService = LocalServices.FirstOrDefault();
+        if (defaultService != null) await NewChat(defaultService);
+        await JS.InvokeVoidAsync("closeModal", "settingsModal");
     }
 }
