@@ -140,6 +140,13 @@
                     <input type="text" class="form-control" @bind="input"
                            @onkeyup="@(e => e.Key == "Enter" ? SendMessage() : null)"
                            placeholder="Type your message..." disabled="@IsSending">
+                    @if (IsSending)
+                    {
+                        <button class="btn btn-warning" @onclick="StopGeneration">
+                            <i class="bi bi-stop-fill"></i>
+                            <span class="d-none d-md-inline">Stop</span>
+                        </button>
+                    }
                     <button class="btn btn-primary" @onclick="SendMessage" disabled="@IsSending">
                         @if (IsSending)
                         {
@@ -200,6 +207,7 @@
     private float temp = 0.7f;
     private int maxTokens = 99999;
     private bool IsSending;
+    private CancellationTokenSource? _cts;
 
     // Endpoint Collections
     private IEnumerable<AIEndpoint> LocalServices => LlmService.GetLocalServices();
@@ -288,6 +296,7 @@
         if (string.IsNullOrWhiteSpace(input) || IsSending) return;
 
         IsSending = true;
+        _cts = new CancellationTokenSource();
         var userMessage = new Message { IsUser = true, Content = input, Timestamp = DateTime.Now };
 
         // Create a new list to hold the messages for this chat
@@ -325,11 +334,22 @@
                 },
                 temp,
                 maxTokens,
-                CurrentChat.ServiceId
+                CurrentChat.ServiceId,
+                _cts.Token
             );
 
             // Make sure to save state after each message
             await SaveChats();
+        }
+        catch (OperationCanceledException)
+        {
+            CurrentChat.Messages.Add(new Message
+            {
+                IsUser = false,
+                IsError = true,
+                    Content = "\n[Generation stopped]",
+                Timestamp = DateTime.Now
+            });
         }
         catch (Exception ex)
         {
@@ -344,9 +364,16 @@
         }
         finally
         {
+            _cts?.Dispose();
+            _cts = null;
             IsSending = false;
             StateHasChanged();
         }
+    }
+
+    private void StopGeneration()
+    {
+        _cts?.Cancel();
     }
 
     private async Task ClearHistory()

@@ -36,7 +36,8 @@ public class LlmService
         Func<string, Task> onContent,
         float temperature = 0.7f,
         int maxTokens = 99999,
-        string endpointId = "goal-setting"
+        string endpointId = "goal-setting",
+        CancellationToken cancellationToken = default
     )
     {
         if (!_endpoints.TryGetValue(endpointId, out var endpoint))
@@ -85,7 +86,8 @@ public class LlmService
 
         while (!reader.EndOfStream)
         {
-            var line = await reader.ReadLineAsync();
+            cancellationToken.ThrowIfCancellationRequested(); 
+            var line = await reader.ReadLineAsync(cancellationToken);
             if (string.IsNullOrEmpty(line)) continue;
             if (!line.StartsWith("data:")) continue;
             if (line == "data: [DONE]") break;
