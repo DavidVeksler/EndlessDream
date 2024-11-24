@@ -9,6 +9,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddScoped<CoinGeckoPriceService>();
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<LlmService>();
 
 

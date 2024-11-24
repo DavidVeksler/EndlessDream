@@ -9,20 +9,49 @@
 <HeadContent>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="" />
+    <meta name="description" content="AI-Powered Chat Interface" />
 </HeadContent>
 
 <div class="d-flex flex-column vh-100">
+    <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
-            <a class="navbar-brand" href="chat#"><i class="bi bi-robot"></i> LLM Chat</a>
+            <a class="navbar-brand" href="chat#">
+                <i class="bi bi-robot"></i> AI Assistant
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <button class="nav-link btn btn-link" @onclick="NewChat"><i class="bi bi-plus-circle"></i> New Chat</button>
+                    <li class="nav-item dropdown">
+                        <button class="nav-link btn btn-link dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-plus-circle"></i> New Chat
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header">Local Services</h6></li>
+                            @foreach (var service in LocalServices)
+                            {
+                                <li>
+                                    <button class="dropdown-item" @onclick="() => NewChat(service)">
+                                        <i class="bi bi-robot"></i> @service.Name
+                                    </button>
+                                </li>
+                            }
+                            @if (RemoteEndpoints.Any())
+                            {
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">Remote Models</h6></li>
+                                @foreach (var model in RemoteEndpoints)
+                                {
+                                    <li>
+                                        <button class="dropdown-item" @onclick="() => NewChat(model)">
+                                            <i class="bi bi-cloud"></i> @model.Name
+                                        </button>
+                                    </li>
+                                }
+                            }
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <button class="nav-link btn btn-link" @onclick='() => JS.InvokeVoidAsync("openModal", "settingsModal")'>
@@ -34,7 +63,9 @@
         </div>
     </nav>
 
+    <!-- Main Chat Interface -->
     <div class="chat-main">
+        <!-- Sidebar -->
         <div class="chat-sidebar d-none d-md-block">
             <div class="list-group">
                 @foreach (var chat in Chats)
@@ -42,7 +73,11 @@
                     <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(chat == CurrentChat ? "active" : "")"
                             @onclick="() => SelectChat(chat)">
                         <span class="text-truncate">
-                            <i class="bi bi-chat-left-text"></i> @chat.Title
+                            @{
+                                var endpoint = AllEndpoints.FirstOrDefault(e => e.Id == chat.ServiceId);
+                                var icon = endpoint?.IsLocalService == true ? "bi-robot" : "bi-cloud";
+                            }
+                            <i class="bi @icon"></i> @chat.Title
                         </span>
                         <span class="badge bg-primary rounded-pill">@chat.Messages.Count</span>
                     </button>
@@ -50,24 +85,25 @@
             </div>
         </div>
 
+        <!-- Chat Content -->
         <div class="chat-content">
+            <!-- Chat Header -->
             <div class="chat-header">
-                <h5 class="mb-0 text-truncate">@CurrentChat.Title</h5>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        @SelectedModel.Id
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        @foreach (var model in Models)
-                        {
-                            <li>
-                                <a class="dropdown-item" @onclick="() => SelectModel(model)">@model.Id</a>
-                            </li>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-truncate">
+                        @{
+                            var currentEndpoint = AllEndpoints.FirstOrDefault(e => e.Id == CurrentChat.ServiceId);
+                            var currentIcon = currentEndpoint?.IsLocalService == true ? "bi-robot" : "bi-cloud";
                         }
-                    </ul>
+                        <i class="bi @currentIcon"></i> @CurrentChat.Title
+                        <small class="text-muted">
+                            (@(currentEndpoint?.Name ?? "Unknown Service"))
+                        </small>
+                    </h5>
                 </div>
             </div>
 
+            <!-- Messages Area -->
             <div class="chat-messages" @ref="messagesRef" id="chatMessages">
                 @foreach (var msg in CurrentChat.Messages)
                 {
@@ -98,9 +134,11 @@
                 }
             </div>
 
-            <div class="chat-input" style="margin-bottom: 100px; position: relative;">
+            <!-- Input Area -->
+            <div class="chat-input">
                 <div class="input-group">
-                    <input type="text" class="form-control" @bind="input" @onkeyup="@(e => e.Key == "Enter" ? SendMessage() : null)"
+                    <input type="text" class="form-control" @bind="input"
+                           @onkeyup="@(e => e.Key == "Enter" ? SendMessage() : null)"
                            placeholder="Type your message..." disabled="@IsSending">
                     <button class="btn btn-primary" @onclick="SendMessage" disabled="@IsSending">
                         @if (IsSending)
@@ -119,6 +157,7 @@
     </div>
 </div>
 
+<!-- Settings Modal -->
 <div class="modal fade" id="settingsModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -130,10 +169,12 @@
                 <div class="mb-3">
                     <label for="tempRange" class="form-label">Temperature: @temp</label>
                     <input type="range" class="form-range" min="0" max="1" step="0.1" id="tempRange" @bind="temp">
+                    <small class="form-text text-muted">Higher values make the output more random, lower values make it more focused.</small>
                 </div>
                 <div class="mb-3">
                     <label for="maxTokens" class="form-label">Max Tokens: @maxTokens</label>
                     <input type="number" class="form-control" id="maxTokens" @bind="maxTokens">
+                    <small class="form-text text-muted">Maximum length of the AI's response.</small>
                 </div>
             </div>
             <div class="modal-footer">
@@ -149,31 +190,42 @@
 @code {
     private List<Conversation> Chats = [];
     private Conversation CurrentChat = new();
-    private List<Model> Models = [];
-    private Model SelectedModel = new() { Id = "Default Model" };
     private ElementReference messagesRef;
     private string input = "";
     private float temp = 0.7f;
     private int maxTokens = 99999;
     private bool IsSending;
 
+    // Endpoint Collections
+    private IEnumerable<AIEndpoint> LocalServices => LlmService.GetLocalServices();
+    private IEnumerable<AIEndpoint> RemoteEndpoints =>
+        LlmService.GetAllEndpoints().Where(e => !e.IsLocalService);
+    private IEnumerable<AIEndpoint> AllEndpoints => LlmService.GetAllEndpoints();
+
     protected override async Task OnInitializedAsync()
     {
-        NewChat();
-        await LoadModels();
-        await LoadChats();
+      
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await JS.InvokeVoidAsync("scrollToBottom", messagesRef);
-    }
+        // Load remote models
+        await LlmService.LoadRemoteModels();
 
-    private async Task LoadModels()
-    {
-        Models = await LlmService.GetModelsAsync();
-        Models.Add(new Model { Id = "RichAgent", EndpointUrl = "http://localhost:8000" });
-        if (Models.Any()) SelectedModel = Models[0];
+        // Load existing chats
+        await LoadChats();
+
+        if (!Chats.Any())
+        {
+            // Default to first local service
+            var defaultService = LocalServices.FirstOrDefault();
+            if (defaultService != null)
+            {
+                await NewChat(defaultService);
+            }
+        }
+
+        await JS.InvokeVoidAsync("scrollToBottom", messagesRef);
     }
 
     private async Task LoadChats()
@@ -183,14 +235,18 @@
             var json = await JS.InvokeAsync<string>("localStorage.getItem", "chatHistory");
             if (!string.IsNullOrEmpty(json))
             {
-                Chats = JsonSerializer.Deserialize<List<Conversation>>(json) ?? new List<Conversation>();
+                Chats = JsonSerializer.Deserialize<List<Conversation>>(json) ?? new();
                 if (Chats.Any()) CurrentChat = Chats[0];
             }
         }
         catch
         {
-            Chats = new List<Conversation>();
-            NewChat();
+            Chats = new();
+            var defaultService = LocalServices.FirstOrDefault();
+            if (defaultService != null)
+            {
+                await NewChat(defaultService);
+            }
         }
     }
 
@@ -200,23 +256,25 @@
             JsonSerializer.Serialize(Chats, new JsonSerializerOptions { WriteIndented = true }));
     }
 
-    private void NewChat()
+    private async Task NewChat(AIEndpoint endpoint)
     {
-        var chat = new Conversation { Title = $"Chat {Chats.Count + 1}" };
-        Chats.Add(chat);
+        var chat = new Conversation
+            {
+                Title = endpoint.IsLocalService
+                    ? $"New {endpoint.Name} Chat"
+                    : $"Chat with {endpoint.Name}",
+                ServiceId = endpoint.Id
+            };
+
+        Chats.Insert(0, chat);
         CurrentChat = chat;
+        await SaveChats();
+        StateHasChanged();
     }
 
     private void SelectChat(Conversation chat)
     {
         CurrentChat = chat;
-        StateHasChanged();
-        InvokeAsync(() => JS.InvokeVoidAsync("scrollToBottom", messagesRef));
-    }
-
-    void SelectModel(Model model)
-    {
-        SelectedModel = model;
         StateHasChanged();
     }
 
@@ -225,7 +283,9 @@
         if (string.IsNullOrWhiteSpace(input) || IsSending) return;
 
         IsSending = true;
-        CurrentChat.Messages.Add(new Message { IsUser = true, Content = input, Timestamp = DateTime.Now });
+        var userMessage = new Message { IsUser = true, Content = input, Timestamp = DateTime.Now };
+        CurrentChat.Messages.Add(userMessage);
+        input = ""; // Clear input immediately after sending
         StateHasChanged();
 
         try
@@ -234,9 +294,14 @@
             CurrentChat.Messages.Add(aiMsg);
             var sb = new StringBuilder();
 
+            var endpoint = AllEndpoints.FirstOrDefault(e => e.Id == CurrentChat.ServiceId);
+            var systemPrompt = endpoint?.IsLocalService == true
+                ? $"You are the {endpoint.Name}. {endpoint.Description}"
+                : "You are a helpful AI assistant.";
+
             await LlmService.StreamCompletionAsync(
                 CurrentChat.Messages,
-                $"You are using the {SelectedModel.Id} model.",
+                systemPrompt,
                 async content =>
                 {
                     sb.Append(content);
@@ -245,7 +310,7 @@
                 },
                 temp,
                 maxTokens,
-                SelectedModel.Id
+                CurrentChat.ServiceId
             );
         }
         catch (Exception ex)
@@ -265,5 +330,4 @@
             await SaveChats();
         }
     }
-
 }
