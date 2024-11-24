@@ -1,0 +1,36 @@
+@functions {
+    [Parameter] public float Temperature { get; set; }
+    [Parameter] public EventCallback<float> TemperatureChanged { get; set; }
+    [Parameter] public int MaxTokens { get; set; }
+    [Parameter] public EventCallback<int> MaxTokensChanged { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+}
+
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="settingsModalLabel">Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="temperatureRange" class="form-label">Temperature: @Temperature</label>
+                    <input type="range" class="form-range" min="0" max="1" step="0.1" id="temperatureRange"
+                           value="@Temperature"
+                           @onchange="e => TemperatureChanged.InvokeAsync(float.Parse(e.Value?.ToString() ?? " 0.7"))">
+                </div>
+                <div class="mb-3">
+                    <label for="maxTokens" class="form-label">Max Tokens: @MaxTokens</label>
+                    <input type="number" class="form-control" id="maxTokens"
+                           value="@MaxTokens"
+                           @onchange="e => MaxTokensChanged.InvokeAsync(int.Parse(e.Value?.ToString() ?? " 99999"))">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" @onclick="OnSave">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>

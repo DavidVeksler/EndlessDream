@@ -1,0 +1,18 @@
+@functions {
+    [Parameter] public List<Conversation> Chats { get; set; } = new();
+    [Parameter] public Conversation CurrentChat { get; set; } = new();
+    [Parameter] public EventCallback<Conversation> OnSelectChat { get; set; }
+}
+
+<div class="chat-sidebar d-none d-md-block">
+    <div class="list-group">
+        @foreach (var chat in Chats)
+        {
+            <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(chat == CurrentChat ? "active" : "")"
+                    @onclick="() => OnSelectChat.InvokeAsync(chat)">
+                <span class="text-truncate"><i class="bi bi-chat-left-text"></i> @chat.Title</span>
+                <span class="badge bg-primary rounded-pill">@chat.Messages.Count</span>
+            </button>
+        }
+    </div>
+</div>

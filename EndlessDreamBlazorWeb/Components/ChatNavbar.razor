@@ -1,0 +1,23 @@
+@functions {
+    [Parameter] public EventCallback OnNewChat { get; set; }
+    [Parameter] public EventCallback OnOpenSettings { get; set; }
+}
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="chat#"><i class="bi bi-robot"></i> LLM Chat</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <button class="nav-link btn btn-link" @onclick="OnNewChat"><i class="bi bi-plus-circle"></i> New Chat</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link btn btn-link" @onclick="OnOpenSettings"><i class="bi bi-gear"></i> Settings</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

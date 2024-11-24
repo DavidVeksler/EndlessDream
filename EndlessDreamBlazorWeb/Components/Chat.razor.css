@@ -1,0 +1,83 @@
+// Chat.razor.css
+.chat-main {
+       display: grid;
+       grid-template-columns: 250px 1fr;
+       height: calc(100vh - 56px);
+       overflow: hidden;
+   }
+
+.chat-sidebar {
+    border-right: 1px solid #dee2e6;
+    overflow-y: auto;
+}
+
+.chat-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.chat-input {
+    padding: 1rem;
+    background: white;
+    border-top: 1px solid #dee2e6;
+}
+
+@media (max-width: 768px) {
+    .chat-main {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Components/ChatMessageList.razor.css */
+.typing-indicator {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.typing-indicator span {
+    width: 0.5rem;
+    height: 0.5rem;
+    background: #666;
+    border-radius: 50%;
+    animation: bounce 1.5s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.pre-wrap {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: inherit;
+    margin: 0;
+}

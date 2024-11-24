@@ -1,0 +1,120 @@
+﻿@page "/"
+@page "/chat"
+@using System.Text
+@inject IChatStateService ChatState
+@inject LlmService LlmService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>AI-Powered Chat | Engage in Intelligent Conversations</PageTitle>
+
+<div class="d-flex flex-column vh-100">
+    <ChatNavbar OnNewChat="NewChat" OnOpenSettings="OpenSettingsModal" />
+
+    <div class="chat-main">
+        <ChatSidebar Chats="@ChatState.Chats"
+                     CurrentChat="@ChatState.CurrentChat"
+                     OnSelectChat="SelectChat" />
+
+        <div class="chat-content">
+            <ChatHeader Title="@ChatState.CurrentChat.Title"
+                        SelectedModel="@ChatState.SelectedModel"
+                        Models="@Models"
+                        OnSelectModel="SelectModel" />
+
+            <ChatMessageList Messages="@ChatState.CurrentChat.Messages"
+                             IsSending="@IsSending"
+                             @ref="chatMessagesRef" />
+
+            <ChatInput @bind-Value="@UserInput"
+                       OnSend="SendMessage"
+                       IsSending="@IsSending" />
+        </div>
+    </div>
+</div>
+
+<SettingsModal @bind-Temperature="Temperature"
+               @bind-MaxTokens="MaxTokens"
+               OnSave="SaveSettings" />
+
+@code {
+    private string UserInput = "";
+    private bool IsSending;
+    private float Temperature = 0.7f;
+    private int MaxTokens = 99999;
+    private List<Model> Models = new();
+    private ElementReference chatMessagesRef;
+    private string ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ChatState.LoadConversationsAsync();
+        await LoadModels();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) =>
+        await JSRuntime.ScrollToBottomAsync(chatMessagesRef);
+
+    private async Task LoadModels()
+    {
+        Models = await LlmService.GetModelsAsync();
+        Models.Add(new() { Id = "RichAgent", EndpointUrl = "http://localhost:8000" });
+        if (Models.Any())
+            await ChatState.SelectModelAsync(Models.First());
+    }
+
+    private async Task NewChat() => await ChatState.NewChatAsync();
+    private async Task SelectChat(Conversation chat) => await ChatState.SelectChatAsync(chat);
+    private async Task SelectModel(Model model) => await ChatState.SelectModelAsync(model);
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(UserInput) || IsSending) return;
+
+        IsSending = true;
+        ErrorMessage = null;
+
+        ChatState.CurrentChat.Messages.Add(new(true, UserInput, DateTime.Now));
+        UserInput = "";
+        StateHasChanged();
+        await JSRuntime.ScrollToBottomAsync(chatMessagesRef);
+
+        try
+        {
+            var aiMessage = new Message(false, "", DateTime.Now);
+            ChatState.CurrentChat.Messages.Add(aiMessage);
+            var sb = new StringBuilder();
+
+            await LlmService.StreamCompletionAsync(
+                ChatState.CurrentChat.Messages,
+                systemPrompt: $"You are using the {ChatState.SelectedModel.Id} model.",
+                async content =>
+                {
+                    sb.Append(content);
+                    aiMessage = aiMessage with { Content = sb.ToString() };
+                    await InvokeAsync(async () =>
+                    {
+                        StateHasChanged();
+                        await JSRuntime.ScrollToBottomAsync(chatMessagesRef);
+                    });
+                },
+                Temperature,
+                MaxTokens,
+                ChatState.SelectedModel.Id
+            );
+        }
+        catch (Exception ex)
+        {
+            ChatState.CurrentChat.Messages.Add(new(false, $"Error: {ex.Message}", DateTime.Now, true));
+            ErrorMessage = $"Failed to get AI response: {ex.Message}";
+        }
+        finally
+        {
+            IsSending = false;
+            StateHasChanged();
+            await JSRuntime.ScrollToBottomAsync(chatMessagesRef);
+        }
+    }
+
+    private async Task OpenSettingsModal() => await JSRuntime.OpenModalAsync("settingsModal");
+    private async Task SaveSettings() => await JSRuntime.CloseModalAsync("settingsModal");
+}

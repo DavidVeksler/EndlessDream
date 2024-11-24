@@ -1,0 +1,21 @@
+@functions {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public Model SelectedModel { get; set; } = new();
+    [Parameter] public List<Model> Models { get; set; } = new();
+    [Parameter] public EventCallback<Model> OnSelectModel { get; set; }
+}
+
+<div class="chat-header">
+    <h5 class="mb-0 text-truncate">@Title</h5>
+    <div class="dropdown">
+        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="modelDropdown" data-bs-toggle="dropdown">
+            @SelectedModel.Id
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="modelDropdown">
+            @foreach (var model in Models)
+            {
+                <li><a class="dropdown-item" @onclick="() => OnSelectModel.InvokeAsync(model)">@model.Id</a></li>
+            }
+        </ul>
+    </div>
+</div>
