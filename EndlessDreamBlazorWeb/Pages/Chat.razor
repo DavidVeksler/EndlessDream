@@ -204,7 +204,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-      
+
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -261,8 +261,8 @@
         var chat = new Conversation
             {
                 Title = endpoint.IsLocalService
-                    ? $"New {endpoint.Name} Chat"
-                    : $"Chat with {endpoint.Name}",
+                        ? $"New {endpoint.Name} Chat"
+                        : $"Chat with {endpoint.Name}",
                 ServiceId = endpoint.Id
             };
 
@@ -284,8 +284,13 @@
 
         IsSending = true;
         var userMessage = new Message { IsUser = true, Content = input, Timestamp = DateTime.Now };
-        CurrentChat.Messages.Add(userMessage);
-        input = ""; // Clear input immediately after sending
+
+        // Create a new list to hold the messages for this chat
+        var chatMessages = CurrentChat.Messages ?? new List<Message>();
+        chatMessages.Add(userMessage);
+        CurrentChat.Messages = chatMessages;
+
+        input = "";
         StateHasChanged();
 
         try
@@ -300,21 +305,30 @@
                 : "You are a helpful AI assistant.";
 
             await LlmService.StreamCompletionAsync(
-                CurrentChat.Messages,
+                CurrentChat.Messages.ToList(),
                 systemPrompt,
                 async content =>
                 {
                     sb.Append(content);
                     aiMsg.Content = sb.ToString();
+                    // Important: Reference the current chat's messages directly
+                    if (!CurrentChat.Messages.Contains(aiMsg))
+                    {
+                        CurrentChat.Messages.Add(aiMsg);
+                    }
                     await InvokeAsync(StateHasChanged);
                 },
                 temp,
                 maxTokens,
                 CurrentChat.ServiceId
             );
+
+            // Make sure to save state after each message
+            await SaveChats();
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Error in SendMessage: {ex}");
             CurrentChat.Messages.Add(new Message
                 {
                     IsUser = false,
@@ -327,7 +341,6 @@
         {
             IsSending = false;
             StateHasChanged();
-            await SaveChats();
         }
     }
 }

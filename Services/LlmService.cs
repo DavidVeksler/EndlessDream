@@ -1,17 +1,17 @@
 ﻿using System.Net.Http.Json;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
 
 public class LlmService
 {
-    private readonly HttpClient _httpClient;
-    private readonly Dictionary<string, AIEndpoint> _endpoints;
     private const string DEFAULT_REMOTE_URL = "http://192.168.1.250:1234";
+    private readonly Dictionary<string, AIEndpoint> _endpoints;
+    private readonly HttpClient _httpClient;
 
     public LlmService(HttpClient httpClient)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        
+
         _endpoints = new Dictionary<string, AIEndpoint>
         {
             ["goal-setting"] = AIEndpoint.CreateLocalService(
@@ -29,6 +29,7 @@ public class LlmService
         };
     }
 
+
     public async Task StreamCompletionAsync(
         List<Message> messages,
         string systemPrompt,
@@ -39,9 +40,7 @@ public class LlmService
     )
     {
         if (!_endpoints.TryGetValue(endpointId, out var endpoint))
-        {
             throw new ArgumentException($"Unknown endpoint ID: {endpointId}");
-        }
 
         var requestBody = new Dictionary<string, object>
         {
@@ -60,21 +59,10 @@ public class LlmService
             ["stream"] = true
         };
 
-        // Add model field only for remote endpoints
         if (!endpoint.IsLocalService && !string.IsNullOrEmpty(endpoint.ModelId))
-        {
             requestBody["model"] = endpoint.ModelId;
-        }
 
-        if (maxTokens > 0)
-        {
-            requestBody["max_tokens"] = maxTokens;
-        }
-
-        if (endpoint.IsLocalService)
-        {
-            requestBody["max_tokens"] = 15000;
-        }
+        if (maxTokens > 0) requestBody["max_tokens"] = endpoint.IsLocalService ? 15000 : maxTokens;
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{endpoint.EndpointUrl}/v1/chat/completions")
         {
@@ -115,30 +103,27 @@ public class LlmService
                         delta.TryGetProperty("content", out var content))
                     {
                         var contentString = content.GetString();
-                        if (!string.IsNullOrEmpty(contentString))
-                        {
-                            await onContent(contentString);
-                        }
+                        if (!string.IsNullOrEmpty(contentString)) await onContent(contentString);
                     }
                 }
             }
             catch (JsonException ex)
             {
-                Console.WriteLine($"Error parsing JSON: {ex.Message}");
-                continue;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error processing stream: {ex.Message}");
-                throw;
+                Console.WriteLine($"Error parsing JSON: {ex.Message}\nLine: {line}");
             }
         }
     }
 
-    public IEnumerable<AIEndpoint> GetLocalServices() => 
-        _endpoints.Values.Where(e => e.IsLocalService);
 
-    public IEnumerable<AIEndpoint> GetAllEndpoints() => _endpoints.Values;
+    public IEnumerable<AIEndpoint> GetLocalServices()
+    {
+        return _endpoints.Values.Where(e => e.IsLocalService);
+    }
+
+    public IEnumerable<AIEndpoint> GetAllEndpoints()
+    {
+        return _endpoints.Values;
+    }
 
     public async Task LoadRemoteModels()
     {
@@ -147,7 +132,7 @@ public class LlmService
             using var tempClient = new HttpClient { BaseAddress = new Uri(DEFAULT_REMOTE_URL) };
             var response = await tempClient.GetAsync("/v1/models");
             response.EnsureSuccessStatusCode();
-            
+
             var result = await response.Content.ReadFromJsonAsync<ModelResponse>();
             if (result?.Data == null) return;
 
