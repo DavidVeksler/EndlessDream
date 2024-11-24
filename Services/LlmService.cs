@@ -71,6 +71,11 @@ public class LlmService
             requestBody["max_tokens"] = maxTokens;
         }
 
+        if (endpoint.IsLocalService)
+        {
+            requestBody["max_tokens"] = 15000;
+        }
+
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{endpoint.EndpointUrl}/v1/chat/completions")
         {
             Content = new StringContent(
