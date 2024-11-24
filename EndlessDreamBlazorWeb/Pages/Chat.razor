@@ -220,7 +220,7 @@
 
         if (!Chats.Any())
         {
-            var defaultService = CustomServices.FirstOrDefault();
+            var defaultService = LocalEndpoints.FirstOrDefault();
             if (defaultService != null)
             {
                 Chats.Insert(0, new Conversation
@@ -264,7 +264,7 @@
         catch
         {
             Chats = new();
-            var defaultService = CustomServices.FirstOrDefault();
+            var defaultService = LocalEndpoints.FirstOrDefault();
             if (defaultService != null)
             {
                 await NewChat(defaultService);
