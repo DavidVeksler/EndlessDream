@@ -44,15 +44,15 @@
 }
 
 ::deep .chat-input {
-    padding: 1rem;
-    border-top: 1px solid #dee2e6;
-    background: #f8f9fa;
-    position: sticky;
+    position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 2;
     width: 100%;
+    padding: 1rem;
+    background: white;
+    border-top: 1px solid #dee2e6;
+    z-index: 1000;
 }
 
 /* Rest of the styles remain the same... */
@@ -203,4 +203,12 @@
 
 ::deep ::-webkit-scrollbar-thumb:hover {
     background: #555;
+}
+
+pre {
+    color: black;
+}
+
+.nav-link {
+    color: #ffffff;
 }
