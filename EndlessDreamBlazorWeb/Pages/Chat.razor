@@ -7,9 +7,9 @@
 
 <PageTitle>AI-Powered Chat</PageTitle>
 <HeadContent>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <meta name="description" content=""/>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="" />
 </HeadContent>
 
 <div class="d-flex flex-column vh-100">
@@ -147,12 +147,12 @@
 </div>
 
 @code {
-    private List<Conversation> Chats = new();
+    private List<Conversation> Chats = [];
     private Conversation CurrentChat = new();
-    private List<Model> Models = new();
+    private List<Model> Models = [];
     private Model SelectedModel = new() { Id = "Default Model" };
     private ElementReference messagesRef;
-    private string input = "",
+    private string input = "";
     private float temp = 0.7f;
     private int maxTokens = 99999;
     private bool IsSending;
@@ -251,13 +251,12 @@
         catch (Exception ex)
         {
             CurrentChat.Messages.Add(new Message
-            {
-                IsUser = false,
-                IsError = true,
-                Content = $"Error: {ex.Message}",
-                Timestamp = DateTime.Now
-            });
-            error = $"Failed to get AI response: {ex.Message}";
+                {
+                    IsUser = false,
+                    IsError = true,
+                    Content = $"Error: {ex.Message}",
+                    Timestamp = DateTime.Now
+                });
         }
         finally
         {
