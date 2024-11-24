@@ -4,7 +4,7 @@ using System.Text.Json;
 
 public class LlmService
 {
-    private const string DEFAULT_REMOTE_URL = "http://192.168.1.250:1234";
+    private const string DEFAULT_LOCAL_URL = "http://localhost:1234";
     private readonly Dictionary<string, AIEndpoint> _endpoints;
     private readonly HttpClient _httpClient;
 
@@ -14,13 +14,13 @@ public class LlmService
 
         _endpoints = new Dictionary<string, AIEndpoint>
         {
-            ["goal-setting"] = AIEndpoint.CreateLocalService(
+            ["goal-setting"] = AIEndpoint.CreateCustomService(
                 "goal-setting",
                 "Goal Setting AI",
                 "Helps set and track your goals",
                 "http://localhost:8001"
             ),
-            ["coaching"] = AIEndpoint.CreateLocalService(
+            ["coaching"] = AIEndpoint.CreateCustomService(
                 "coaching",
                 "Coaching AI",
                 "Provides ongoing coaching and support",
@@ -51,7 +51,7 @@ public class LlmService
             }).Prepend(new
             {
                 role = "system",
-                content = endpoint.IsLocalService
+                content = endpoint.IsCustomService
                     ? $"{systemPrompt}\nYou are the {endpoint.Name}. {endpoint.Description}"
                     : systemPrompt
             }).ToList(),
@@ -59,10 +59,10 @@ public class LlmService
             ["stream"] = true
         };
 
-        if (!endpoint.IsLocalService && !string.IsNullOrEmpty(endpoint.ModelId))
+        if (!endpoint.IsCustomService && !string.IsNullOrEmpty(endpoint.ModelId))
             requestBody["model"] = endpoint.ModelId;
 
-        if (maxTokens > 0) requestBody["max_tokens"] = endpoint.IsLocalService ? 15000 : maxTokens;
+        if (maxTokens > 0) requestBody["max_tokens"] = endpoint.IsCustomService ? 15000 : maxTokens;
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{endpoint.EndpointUrl}/v1/chat/completions")
         {
@@ -115,9 +115,9 @@ public class LlmService
     }
 
 
-    public IEnumerable<AIEndpoint> GetLocalServices()
+    public IEnumerable<AIEndpoint> GetCustomServices()
     {
-        return _endpoints.Values.Where(e => e.IsLocalService);
+        return _endpoints.Values.Where(e => e.IsCustomService);
     }
 
     public IEnumerable<AIEndpoint> GetAllEndpoints()
@@ -125,11 +125,11 @@ public class LlmService
         return _endpoints.Values;
     }
 
-    public async Task LoadRemoteModels()
+    public async Task LoadLocalModels()
     {
         try
         {
-            using var tempClient = new HttpClient { BaseAddress = new Uri(DEFAULT_REMOTE_URL) };
+            using var tempClient = new HttpClient { BaseAddress = new Uri(DEFAULT_LOCAL_URL) };
             var response = await tempClient.GetAsync("/v1/models");
             response.EnsureSuccessStatusCode();
 
@@ -138,7 +138,7 @@ public class LlmService
 
             foreach (var model in result.Data)
             {
-                var endpoint = AIEndpoint.CreateRemoteModel(model, DEFAULT_REMOTE_URL);
+                var endpoint = AIEndpoint.CreateLocalModel(model, DEFAULT_LOCAL_URL);
                 _endpoints[endpoint.Id] = endpoint;
             }
         }

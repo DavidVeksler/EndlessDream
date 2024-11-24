@@ -9,7 +9,7 @@ public class Conversation
 }
 
 
-public class Model
+public class Models
 {
     public string Id { get; set; } = "";
 
@@ -21,7 +21,7 @@ public class Model
 
 public class ModelResponse
 {
-    public List<Model> Data { get; set; } = new();
+    public List<Models> Data { get; set; } = new();
     public string Object { get; set; } = "";
 }
 
@@ -49,11 +49,11 @@ public class AIEndpoint
     public string Name { get; set; }
     public string Description { get; set; }
     public string EndpointUrl { get; set; }
-    public bool IsLocalService { get; set; }
-    public string ModelId { get; set; }  // For remote models
+    public bool IsCustomService { get; set; }
+    public string ModelId { get; set; }  // For local models
 
     // Factory method for local services
-    public static AIEndpoint CreateLocalService(string id, string name, string description, string endpointUrl)
+    public static AIEndpoint CreateCustomService(string id, string name, string description, string endpointUrl)
     {
         return new AIEndpoint
         {
@@ -61,20 +61,20 @@ public class AIEndpoint
             Name = name,
             Description = description,
             EndpointUrl = endpointUrl,
-            IsLocalService = true
+            IsCustomService = true
         };
     }
 
-    // Factory method for remote models
-    public static AIEndpoint CreateRemoteModel(Model model, string baseUrl)
+    // Factory method for local models
+    public static AIEndpoint CreateLocalModel(Models model, string baseUrl)
     {
         return new AIEndpoint
         {
-            Id = $"remote-{model.Id}",
+            Id = $"local-{model.Id}",
             Name = model.Id,
-            Description = $"Remote model: {model.Id}",
+            Description = $"Local model: {model.Id}",
             EndpointUrl = baseUrl,
-            IsLocalService = false,
+            IsCustomService = false,
             ModelId = model.Id
         };
     }
