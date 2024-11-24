@@ -1,20 +1,18 @@
 ﻿@page "/"
 @page "/chat"
-@inject LlmService LlmService
-@inject IJSRuntime JSRuntime
 @using System.Text
 @using System.Text.Json
+@inject LlmService LlmService
+@inject IJSRuntime JS
 
-<PageTitle>AI-Powered Chat | Engage in Intelligent Conversations</PageTitle>
+<PageTitle>AI-Powered Chat</PageTitle>
 <HeadContent>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Engage in intelligent conversations with our AI-powered chat. Experience the future of communication with advanced language models and intuitive interface." />
-    <!-- Add your other meta tags and Open Graph tags here -->
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content=""/>
 </HeadContent>
 
 <div class="d-flex flex-column vh-100">
-    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="chat#"><i class="bi bi-robot"></i> LLM Chat</a>
@@ -27,58 +25,61 @@
                         <button class="nav-link btn btn-link" @onclick="NewChat"><i class="bi bi-plus-circle"></i> New Chat</button>
                     </li>
                     <li class="nav-item">
-                        <button class="nav-link btn btn-link" @onclick="OpenSettingsModal"><i class="bi bi-gear"></i> Settings</button>
+                        <button class="nav-link btn btn-link" @onclick='() => JS.InvokeVoidAsync("openModal", "settingsModal")'>
+                            <i class="bi bi-gear"></i> Settings
+                        </button>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content Area -->
     <div class="chat-main">
-        <!-- Sidebar -->
         <div class="chat-sidebar d-none d-md-block">
             <div class="list-group">
                 @foreach (var chat in Chats)
                 {
-                    <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(chat == CurrentChat ? "active" : "")" @onclick="() => SelectChat(chat)">
-                        <span class="text-truncate"><i class="bi bi-chat-left-text"></i> @chat.Title</span>
+                    <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(chat == CurrentChat ? "active" : "")"
+                            @onclick="() => SelectChat(chat)">
+                        <span class="text-truncate">
+                            <i class="bi bi-chat-left-text"></i> @chat.Title
+                        </span>
                         <span class="badge bg-primary rounded-pill">@chat.Messages.Count</span>
                     </button>
                 }
             </div>
         </div>
 
-        <!-- Chat Area -->
         <div class="chat-content">
-            <!-- Header -->
             <div class="chat-header">
                 <h5 class="mb-0 text-truncate">@CurrentChat.Title</h5>
                 <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="modelDropdown" data-bs-toggle="dropdown">
+                    <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         @SelectedModel.Id
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="modelDropdown">
+                    <ul class="dropdown-menu dropdown-menu-end">
                         @foreach (var model in Models)
                         {
-                            <li><a class="dropdown-item" @onclick="() => SelectModel(model)">@model.Id</a></li>
+                            <li>
+                                <a class="dropdown-item" @onclick="() => SelectModel(model)">@model.Id</a>
+                            </li>
                         }
                     </ul>
                 </div>
             </div>
 
-            <!-- Messages -->
-            <div class="chat-messages" @ref="chatMessagesRef" id="chatMessages">
-                @foreach (var message in CurrentChat.Messages)
+            <div class="chat-messages" @ref="messagesRef" id="chatMessages">
+                @foreach (var msg in CurrentChat.Messages)
                 {
-                    <div class="d-flex @(message.IsUser ? "justify-content-end" : "justify-content-start") mb-3">
-                        <div class="card @(message.IsUser ? "bg-primary text-white" : "") shadow-sm @(message.IsError ? "border-danger" : "bg-light")}" style="max-width: 75%;">
+                    <div class="d-flex @(msg.IsUser ? "justify-content-end" : "justify-content-start") mb-3">
+                        <div class="card @(msg.IsUser ? "bg-primary text-white" : "") shadow-sm @(msg.IsError ? "border-danger" : "bg-light")"
+                             style="max-width: 75%;">
                             <div class="card-body">
-                                <pre class="card-text mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0;">@message.Content</pre>
+                                <pre class="card-text mb-0" style="font-family: inherit; margin: 0; white-space: pre-wrap; word-wrap: break-word;">@msg.Content</pre>
                             </div>
                             <div class="card-footer text-muted small d-flex justify-content-between align-items-center">
-                                <span>@(message.IsUser ? "You" : "AI")</span>
-                                <span>@message.Timestamp.ToString("g")</span>
+                                <span>@(msg.IsUser ? "You" : "AI")</span>
+                                <span>@msg.Timestamp.ToString("g")</span>
                             </div>
                         </div>
                     </div>
@@ -89,9 +90,7 @@
                         <div class="card bg-light shadow-sm">
                             <div class="card-body">
                                 <div class="typing-indicator">
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
+                                    <span></span><span></span><span></span>
                                 </div>
                             </div>
                         </div>
@@ -99,14 +98,14 @@
                 }
             </div>
 
-            <!-- Input Area -->
             <div class="chat-input" style="margin-bottom: 100px; position: relative;">
                 <div class="input-group">
-                    <input type="text" class="form-control" @bind="UserInput" @onkeyup="HandleKeyUp" placeholder="Type your message...">
+                    <input type="text" class="form-control" @bind="input" @onkeyup="@(e => e.Key == "Enter" ? SendMessage() : null)"
+                           placeholder="Type your message..." disabled="@IsSending">
                     <button class="btn btn-primary" @onclick="SendMessage" disabled="@IsSending">
                         @if (IsSending)
                         {
-                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
                         }
                         else
                         {
@@ -120,123 +119,99 @@
     </div>
 </div>
 
-<!-- Settings Modal -->
-<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+<div class="modal fade" id="settingsModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="settingsModalLabel">Settings</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <!-- Settings Form -->
                 <div class="mb-3">
-                    <label for="temperatureRange" class="form-label">Temperature: @Temperature</label>
-                    <input type="range" class="form-range" min="0" max="1" step="0.1" id="temperatureRange" @bind="Temperature">
+                    <label for="tempRange" class="form-label">Temperature: @temp</label>
+                    <input type="range" class="form-range" min="0" max="1" step="0.1" id="tempRange" @bind="temp">
                 </div>
                 <div class="mb-3">
-                    <label for="maxTokens" class="form-label">Max Tokens: @MaxTokens</label>
-                    <input type="number" class="form-control" id="maxTokens" @bind="MaxTokens">
+                    <label for="maxTokens" class="form-label">Max Tokens: @maxTokens</label>
+                    <input type="number" class="form-control" id="maxTokens" @bind="maxTokens">
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" @onclick="SaveSettings">Save changes</button>
+                <button type="button" class="btn btn-primary" @onclick='() => JS.InvokeVoidAsync("closeModal", "settingsModal")'>
+                    Save
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 @code {
-    List<Conversation> Chats = new();
-    Conversation CurrentChat = new();
-    string UserInput = "";
-    bool IsSending = false;
-    List<Model> Models = new();
-    Model SelectedModel = new Model { Id = "Default Model" };
-    float Temperature = 0.7f;
-    int MaxTokens = 99999;
-    private ElementReference chatMessagesRef;
-
-    // Optional: Add method to persist conversations
-    private async Task SaveConversationsToLocalStorage()
-    {
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true
-        };
-        var json = JsonSerializer.Serialize(Chats, options);
-        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "chatHistory", json);
-    }
-
-    // Optional: Add method to load conversations
-    private async Task LoadConversationsFromLocalStorage()
-    {
-        try
-        {
-            var json = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "chatHistory");
-            if (!string.IsNullOrEmpty(json))
-            {
-                Chats = JsonSerializer.Deserialize<List<Conversation>>(json) ?? new List<Conversation>();
-                if (Chats.Any())
-                {
-                    CurrentChat = Chats.First();
-                }
-            }
-        }
-        catch
-        {
-            // Handle any errors loading from localStorage
-            Chats = new List<Conversation>();
-            NewChat();
-        }
-    }
-
-
-    // Optional: Add method to save after each message
-    async Task SaveCurrentState()
-    {
-        await SaveConversationsToLocalStorage();
-    }
-
+    private List<Conversation> Chats = new();
+    private Conversation CurrentChat = new();
+    private List<Model> Models = new();
+    private Model SelectedModel = new() { Id = "Default Model" };
+    private ElementReference messagesRef;
+    private string input = "",
+    private float temp = 0.7f;
+    private int maxTokens = 99999;
+    private bool IsSending;
 
     protected override async Task OnInitializedAsync()
     {
         NewChat();
         await LoadModels();
-
-        await LoadConversationsFromLocalStorage();
-        await LoadModels();
+        await LoadChats();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await ScrollToBottom();
+        await JS.InvokeVoidAsync("scrollToBottom", messagesRef);
     }
 
-    async Task LoadModels()
+    private async Task LoadModels()
     {
         Models = await LlmService.GetModelsAsync();
-        Models.Add(new Model() { Id = "RichAgent", EndpointUrl = "http://localhost:8000"});
-        if (Models.Any())
+        Models.Add(new Model { Id = "RichAgent", EndpointUrl = "http://localhost:8000" });
+        if (Models.Any()) SelectedModel = Models[0];
+    }
+
+    private async Task LoadChats()
+    {
+        try
         {
-            SelectedModel = Models.First();
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", "chatHistory");
+            if (!string.IsNullOrEmpty(json))
+            {
+                Chats = JsonSerializer.Deserialize<List<Conversation>>(json) ?? new List<Conversation>();
+                if (Chats.Any()) CurrentChat = Chats[0];
+            }
+        }
+        catch
+        {
+            Chats = new List<Conversation>();
+            NewChat();
         }
     }
 
-    void NewChat()
+    private async Task SaveChats()
+    {
+        await JS.InvokeVoidAsync("localStorage.setItem", "chatHistory",
+            JsonSerializer.Serialize(Chats, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private void NewChat()
     {
         var chat = new Conversation { Title = $"Chat {Chats.Count + 1}" };
         Chats.Add(chat);
         CurrentChat = chat;
-        StateHasChanged();
     }
 
-    void SelectChat(Conversation chat)
+    private void SelectChat(Conversation chat)
     {
         CurrentChat = chat;
         StateHasChanged();
-        InvokeAsync(ScrollToBottom);
+        InvokeAsync(() => JS.InvokeVoidAsync("scrollToBottom", messagesRef));
     }
 
     void SelectModel(Model model)
@@ -245,84 +220,51 @@
         StateHasChanged();
     }
 
-    async Task HandleKeyUp(KeyboardEventArgs e)
+    private async Task SendMessage()
     {
-        if (e.Key == "Enter") await SendMessage();
-    }
-
-    async Task SendMessage()
-    {
-        if (string.IsNullOrWhiteSpace(UserInput) || IsSending) return;
+        if (string.IsNullOrWhiteSpace(input) || IsSending) return;
 
         IsSending = true;
-        ErrorMessage = null;
-        CurrentChat.Messages.Add(new Message { IsUser = true, Content = UserInput, Timestamp = DateTime.Now });
-        var userMessage = UserInput;
-        UserInput = "";
+        CurrentChat.Messages.Add(new Message { IsUser = true, Content = input, Timestamp = DateTime.Now });
         StateHasChanged();
-        await ScrollToBottom();
 
         try
         {
-            var aiMessage = new Message { IsUser = false, Content = "", Timestamp = DateTime.Now };
-            CurrentChat.Messages.Add(aiMessage);
-
+            var aiMsg = new Message { IsUser = false, Content = "", Timestamp = DateTime.Now };
+            CurrentChat.Messages.Add(aiMsg);
             var sb = new StringBuilder();
 
             await LlmService.StreamCompletionAsync(
-                CurrentChat.Messages,  // Pass the entire conversation history
-                systemPrompt: $"You are using the {SelectedModel.Id} model.",
-                onContentAsync: async content =>
+                CurrentChat.Messages,
+                $"You are using the {SelectedModel.Id} model.",
+                async content =>
                 {
                     sb.Append(content);
-                    aiMessage.Content = sb.ToString();
-                    await InvokeAsync(async () =>
-                    {
-                        StateHasChanged();
-                        await ScrollToBottom();
-                    });
+                    aiMsg.Content = sb.ToString();
+                    await InvokeAsync(StateHasChanged);
                 },
-                temperature: Temperature,
-                maxTokens: MaxTokens,
+                temp,
+                maxTokens,
                 SelectedModel.Id
             );
         }
         catch (Exception ex)
         {
-            var errorMessage = new Message 
-            { 
-                IsUser = false, 
+            CurrentChat.Messages.Add(new Message
+            {
+                IsUser = false,
                 IsError = true,
                 Content = $"Error: {ex.Message}",
-                Timestamp = DateTime.Now 
-            };
-            CurrentChat.Messages.Add(errorMessage);
-            ErrorMessage = $"Failed to get AI response: {ex.Message}";
+                Timestamp = DateTime.Now
+            });
+            error = $"Failed to get AI response: {ex.Message}";
         }
         finally
         {
             IsSending = false;
             StateHasChanged();
-            await ScrollToBottom();
+            await SaveChats();
         }
     }
 
-    public string ErrorMessage { get; set; }
-
-    async Task OpenSettingsModal()
-    {
-        await JSRuntime.InvokeVoidAsync("openModal", "settingsModal");
-    }
-
-    async Task SaveSettings()
-    {
-        await JSRuntime.InvokeVoidAsync("closeModal", "settingsModal");
-    }
-
-    async Task ScrollToBottom()
-    {
-        await JSRuntime.InvokeVoidAsync("scrollToBottom", chatMessagesRef);
-    }
-
-    
 }
