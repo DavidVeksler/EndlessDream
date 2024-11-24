@@ -163,5 +163,3 @@ public class LlmService
         }
     }
 }
-
-// CompletionChunk class can be removed since we're using JsonElement directly
