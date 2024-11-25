@@ -15,3 +15,12 @@ function closeModal(modalId) {
         modal.hide();
     }
 }
+
+async function postMessage(data) {
+    window.parent.postMessage(data, "*");
+    return;
+}
+
+async function isEmbedded() {
+    return window.parent !== window;  //JavaScript helper to detect the context (embedded or standalone)
+};
