@@ -1,0 +1,404 @@
+﻿@inject LlmService LlmService
+@inject IJSRuntime JS
+
+@layout WidgetLayout
+@using System.Text
+@using System.Text.Json
+
+<!---Chat Board Start--> 
+<div class="frame-content">
+    <div class="widget-position-right sidebar-position-right onlyBubble @(ChatContainer ? "open" : "")" id="chatContainer">
+        <div class="chat no-clip-path chrome moveFromRight-enter-done">
+            <!-- Navigation Bar -->
+            <nav class="navbar navbar-expand-lg navbar-dark bg-primary chat-box-nav">
+                <div class="container-fluid">
+                    <div class="navbar-brand">
+                        <i class="bi bi-robot"></i> AI Assistant
+                    </div>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav ms-auto">
+                            <li class="nav-item dropdown">
+                                <button class="nav-link btn btn-link dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i class="bi bi-plus-circle"></i> New Chat
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><h6 class="dropdown-header">Local Services</h6></li>
+                                    @foreach (var service in LocalServices)
+                                    {
+                                        <li>
+                                            <button class="dropdown-item" @onclick="() => NewChat(service)">
+                                                <i class="bi bi-robot"></i> @service.Name
+                                            </button>
+                                        </li>
+                                    }
+                                    @if (RemoteEndpoints.Any())
+                                    {
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><h6 class="dropdown-header">Remote Models</h6></li>
+                                        @foreach (var model in RemoteEndpoints)
+                                        {
+                                            <li>
+                                                <button class="dropdown-item" @onclick="() => NewChat(model)">
+                                                    <i class="bi bi-cloud"></i> @model.Name
+                                                </button>
+                                            </li>
+                                        }
+                                    }
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <button class="nav-link btn btn-link dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i class="bi bi-clock-history"></i> History
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    @if (Chats?.Count > 0)
+                                    {
+                                        foreach (var chat in Chats)
+                                        {
+                                            <li>
+                                                <button class="dropdown-item @(chat == CurrentChat ? "active" : "")"
+                                                @onclick="() => SelectChat(chat)">
+                                                    <span class="text-truncate">
+                                                        @{
+                                                            var endpoint = AllEndpoints.FirstOrDefault(e => e.Id == chat.ServiceId);
+                                                            var icon = endpoint?.IsCustomService == true ? "bi-gear" : "bi-pencil";
+                                                        }
+                                                        <i class="bi @icon"></i> @chat.Title
+                                                    </span>
+                                                    <span class="badge bg-primary rounded-pill">@chat.Messages.Count</span>
+                                                </button>
+                                            </li>
+
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <li>
+                                            <button class="dropdown-item">
+                                                <span class="badge bg-primary rounded-pill">No chat history!</span>
+                                            </button>
+                                        </li>
+                                    }
+                                </ul>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link btn btn-link" @onclick='() => JS.InvokeVoidAsync("openModal", "settingsModal")'>
+                                    <i class="bi bi-gear"></i> <span class="settings">Settings</span>
+                                </button>
+                            </li>
+                        </ul>
+
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Chat Interface -->
+            <div class="chat-main">
+                <!-- Chat Content -->
+                <div class="chat-content">
+                    <!-- Chat Header -->
+                    <div class="chat-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 text-truncate">
+                                @{
+                                    var currentEndpoint = AllEndpoints.FirstOrDefault(e => e.Id == CurrentChat.ServiceId);
+                                    var currentIcon = currentEndpoint?.IsCustomService == true ? "bi-gear" : "bi-pencil";
+                                }
+                                <i class="bi @currentIcon"></i> @CurrentChat.Title
+                                <small class="text-muted">
+                                    (@(currentEndpoint?.Name ?? "Unknown Service"))
+                                </small>
+                            </h6>
+                        </div>
+                    </div>
+
+                    <!-- Messages Area -->
+                    <div class="chat-messages" @ref="messagesRef" id="chatMessages">
+                        @foreach (var msg in CurrentChat.Messages)
+                        {
+                            <div class="d-flex @(msg.IsUser ? "justify-content-end" : "justify-content-start") mb-3">
+                                <div class="card @(msg.IsUser ? "bg-primary text-white" : "") shadow-sm @(msg.IsError ? "border-danger" : "bg-light")"
+                                style="max-width: 75%;">
+                                    <div class="card-body">
+                                        <pre class="card-text mb-0" style="font-family: inherit; margin: 0; white-space: pre-wrap; word-wrap: break-word;">@msg.Content</pre>
+                                    </div>
+                                    <div class="card-footer text-muted small d-flex justify-content-between align-items-center">
+                                        <span>@(msg.IsUser ? "You" : "AI")</span>
+                                        <span>@msg.Timestamp.ToString("g")</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        @if (IsSending)
+                        {
+                            <div class="d-flex justify-content-start mb-3">
+                                <div class="card bg-light shadow-sm">
+                                    <div class="card-body">
+                                        <div class="typing-indicator">
+                                            <span></span><span></span><span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <!-- Input Area -->
+            <div class="chat-input">
+                <div class="input-group">
+                    <input type="text" class="form-control" @bind="input" @onkeyup="@(e => e.Key == "Enter" ? SendMessage() : null)" placeholder="Type your message..." disabled="@IsSending">
+                    <button class="btn" @onclick="SendMessage" disabled="@IsSending">
+                        @if (IsSending)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                        }
+                        else
+                        {
+                            <div class="icon">
+                                <svg viewBox="1496 193 57 54" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                                    <g id="Group-9-Copy-3" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" transform="translate(1523.000000, 220.000000) rotate(-270.000000) translate(-1523.000000, -220.000000) translate(1499.000000, 193.000000)">
+                                        <path d="M5.42994667,44.5306122 L16.5955554,44.5306122 L21.049938,20.423658 C21.6518463,17.1661523 26.3121212,17.1441362 26.9447801,20.3958097 L31.6405465,44.5306122 L42.5313185,44.5306122 L23.9806326,7.0871633 L5.42994667,44.5306122 Z M22.0420732,48.0757124 C21.779222,49.4982538 20.5386331,50.5306122 19.0920112,50.5306122 L1.59009899,50.5306122 C-1.20169244,50.5306122 -2.87079654,47.7697069 -1.64625638,45.2980459 L20.8461928,-0.101616237 C22.1967178,-2.8275701 25.7710778,-2.81438868 27.1150723,-0.101616237 L49.6075215,45.2980459 C5.08414042,47.7885641 49.1422456,50.5306122 46.3613062,50.5306122 L29.1679835,50.5306122 C27.7320366,50.5306122 26.4974445,49.5130766 26.2232033,48.1035608 L24.0760553,37.0678766 L22.0420732,48.0757124 Z" id="sendicon" fill="#96AAB4" fill-rule="nonzero"></path>
+                                    </g>
+                                </svg>
+                            </div>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div class="modal fade" id="settingsModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Settings</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="tempRange" class="form-label">Temperature: @temp</label>
+                            <input type="range" class="form-range" min="0" max="1" step="0.1" id="tempRange" @bind="temp">
+                            <small class="form-text text-muted">Higher values make the output more random, lower values make it more focused.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="maxTokens" class="form-label">Max Tokens: @maxTokens</label>
+                            <input type="number" class="form-control" id="maxTokens" @bind="maxTokens">
+                            <small class="form-text text-muted">Maximum length of the AI's response.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" @onclick='() => JS.InvokeVoidAsync("closeModal", "settingsModal")'>
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="chat-button" class="chat-closed">
+        <div class="buttonWave"></div>
+        <button @onclick="() => OpenChatWidget()" id="button-body" type="button">
+
+            @if (!ChatContainer)
+            {
+                <i class="material-icons active" style="color: rgb(255, 255, 255);">
+                    <svg id="ic_bubble" fill="#FFFFFF" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"></path>
+                        <path d="M0 0h24v24H0z" fill="none"></path>
+                    </svg>
+                </i>
+            }
+            else
+            {
+                <i class="material-icons active" style="color: rgb(255, 255, 255);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-x" viewBox="0 0 16 16">
+                        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                    </svg>
+                </i>
+            }
+        </button>
+    </div>
+</div>
+
+<!---Chat Board End-->
+
+@code
+{
+    bool ChatContainer = false;
+
+    private List<Conversation> Chats = [];
+    private Conversation CurrentChat = new();
+    private ElementReference messagesRef;
+    private string input = "";
+    private float temp = 0.7f;
+    private int maxTokens = 99999;
+    private bool IsSending;
+    private bool IsEmbedded;
+ 
+    // Endpoint Collections
+    private IEnumerable<AIEndpoint> LocalServices => LlmService.GetCustomServices();
+    private IEnumerable<AIEndpoint> RemoteEndpoints =>
+        LlmService.GetAllEndpoints().Where(e => !e.IsCustomService);
+    private IEnumerable<AIEndpoint> AllEndpoints => LlmService.GetAllEndpoints();
+
+    protected override async Task OnInitializedAsync()
+    {
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            IsEmbedded = await JS.InvokeAsync<bool>("isEmbedded");  //check request received from iframe or not
+        }
+
+        // Load remote models
+        await LlmService.LoadLocalModels();
+
+        // Load existing chats
+        await LoadChats();
+
+        if (!Chats.Any())
+        {
+            // Default to first local service
+            var defaultService = LocalServices.FirstOrDefault();
+            if (defaultService != null)
+            {
+                await NewChat(defaultService);
+            }
+        }
+        await JS.InvokeVoidAsync("scrollToBottom", messagesRef);
+    }
+
+    private async Task LoadChats()
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", "chatHistory");
+            if (!string.IsNullOrEmpty(json))
+            {
+                Chats = JsonSerializer.Deserialize<List<Conversation>>(json) ?? new();
+                if (Chats.Any()) CurrentChat = Chats[0];
+            }
+        }
+        catch
+        {
+            Chats = new();
+            var defaultService = LocalServices.FirstOrDefault();
+            if (defaultService != null)
+            {
+                await NewChat(defaultService);
+            }
+        }
+    }
+
+    private async Task SaveChats()
+    {
+        await JS.InvokeVoidAsync("localStorage.setItem", "chatHistory",
+            JsonSerializer.Serialize(Chats, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private async Task NewChat(AIEndpoint endpoint)
+    {
+        var chat = new Conversation
+            {
+                Title = endpoint.IsCustomService
+                            ? $"New {endpoint.Name} Chat"
+                            : $"Chat with {endpoint.Name}",
+                ServiceId = endpoint.Id
+            };
+
+        Chats.Insert(0, chat);
+        CurrentChat = chat;
+        await SaveChats();
+        StateHasChanged();
+    }
+
+    private void SelectChat(Conversation chat)
+    {
+        CurrentChat = chat;
+        StateHasChanged();
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(input) || IsSending) return;
+
+        IsSending = true;
+        var userMessage = new Message { IsUser = true, Content = input, Timestamp = DateTime.Now };
+
+        // Create a new list to hold the messages for this chat
+        var chatMessages = CurrentChat.Messages ?? new List<Message>();
+        chatMessages.Add(userMessage);
+        CurrentChat.Messages = chatMessages;
+
+        input = "";
+        StateHasChanged();
+
+        try
+        {
+            var aiMsg = new Message { IsUser = false, Content = "", Timestamp = DateTime.Now };
+            CurrentChat.Messages.Add(aiMsg);
+            var sb = new StringBuilder();
+
+            var endpoint = AllEndpoints.FirstOrDefault(e => e.Id == CurrentChat.ServiceId);
+            var systemPrompt = endpoint?.IsCustomService == true
+                ? $"You are the {endpoint.Name}. {endpoint.Description}"
+                : "You are a helpful AI assistant.";
+
+            await LlmService.StreamCompletionAsync(
+                CurrentChat.Messages.ToList(),
+                systemPrompt,
+                async content =>
+                {
+                    sb.Append(content);
+                    aiMsg.Content = sb.ToString();
+                    // Important: Reference the current chat's messages directly
+                    if (!CurrentChat.Messages.Contains(aiMsg))
+                    {
+                        CurrentChat.Messages.Add(aiMsg);
+                    }
+                    await InvokeAsync(StateHasChanged);
+                },
+                temp,
+                maxTokens,
+                CurrentChat.ServiceId
+            );
+
+            // Make sure to save state after each message
+            await SaveChats();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in SendMessage: {ex}");
+            CurrentChat.Messages.Add(new Message
+                {
+                    IsUser = false,
+                    IsError = true,
+                    Content = $"Error: {ex.Message}",
+                    Timestamp = DateTime.Now
+                });
+        }
+        finally
+        {
+            IsSending = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenChatWidget()
+    {
+        ChatContainer = !ChatContainer;
+        if (IsEmbedded) //call postMessage for iframe only 
+        {
+            await JS.InvokeVoidAsync("postMessage", ChatContainer ? "show" : "hide");
+        }
+    }
+}
