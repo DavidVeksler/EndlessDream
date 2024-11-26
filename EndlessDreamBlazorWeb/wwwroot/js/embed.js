@@ -1,6 +1,6 @@
 ﻿window.addEventListener("load", () => {
 
-    let hostUrl = "https://localhost:7079";
+    let hostUrl = "https://dream.davidveksler.com/";
 
     (function (d, i, f, ur) {
         let pdiv = document.createElement(d);

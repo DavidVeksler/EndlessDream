@@ -248,9 +248,30 @@
         LlmService.GetAllEndpoints().Where(e => !e.IsCustomService);
     private IEnumerable<AIEndpoint> AllEndpoints => LlmService.GetAllEndpoints();
 
+  
+
     protected override async Task OnInitializedAsync()
     {
+        await LlmService.LoadLocalModels();
+
+        if (!Chats.Any())
+        {
+            var defaultService = LlmService.GetAllEndpoints().FirstOrDefault();
+            if (defaultService != null)
+            {
+                Chats.Insert(0, new Conversation
+                {
+                    Title = defaultService.IsCustomService
+                        ? $"New {defaultService.Name} Chat"
+                        : $"Chat with {defaultService.Name}",
+                    ServiceId = defaultService.Id
+                });
+                CurrentChat = Chats[0];
+            }
+        }
     }
+
+    private bool isJsInteropReady;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -259,22 +280,16 @@
             IsEmbedded = await JS.InvokeAsync<bool>("isEmbedded");  //check request received from iframe or not
         }
 
-        // Load remote models
-        await LlmService.LoadLocalModels();
-
-        // Load existing chats
-        await LoadChats();
-
-        if (!Chats.Any())
+        if (firstRender)
         {
-            // Default to first local service
-            var defaultService = LocalServices.FirstOrDefault();
-            if (defaultService != null)
+            isJsInteropReady = true;
+            await LoadChats();
+
+            if (isJsInteropReady)
             {
-                await NewChat(defaultService);
+                await JS.InvokeVoidAsync("scrollToBottom", messagesRef);
             }
         }
-        await JS.InvokeVoidAsync("scrollToBottom", messagesRef);
     }
 
     private async Task LoadChats()
