@@ -11,6 +11,7 @@ builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddScoped<CoinGeckoPriceService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<LlmService>();
+builder.Services.AddScoped<TerminalService>();
 
 
 WebApplication app = builder.Build();

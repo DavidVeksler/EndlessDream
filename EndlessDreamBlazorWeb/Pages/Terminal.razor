@@ -1,0 +1,341 @@
+﻿@page "/terminal"
+@using System.Text
+@using System.Text.Json
+@using System.Text.RegularExpressions
+@inject TerminalService TerminalService
+@inject IJSRuntime JS
+
+<PageTitle>Ubuntu Terminal Emulator</PageTitle>
+
+<div class="d-flex flex-column vh-100">
+    <!-- Terminal Header -->
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-terminal"></i> Ubuntu 22.04 LTS
+            </span>
+            <div class="d-flex">
+                @if (AvailableModels.Any())
+                {
+                    <div class="dropdown me-2">
+                        <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            @(CurrentModel?.Id ?? "Select Model")
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            @foreach (var model in AvailableModels)
+                            {
+                                <li><button class="dropdown-item" @onclick="() => SelectModel(model)">@model.Id</button></li>
+                            }
+                        </ul>
+                    </div>
+                }
+                <button class="btn btn-outline-light btn-sm me-2" @onclick="ClearTerminal">
+                    <i class="bi bi-trash"></i> Clear
+                </button>
+                <button class="btn btn-outline-light btn-sm" @onclick="ResetTerminal">
+                    <i class="bi bi-arrow-clockwise"></i> Reset
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Terminal Content -->
+    <div class="terminal-content flex-grow-1">
+        <div class="terminal-mode">
+            @if (CurrentModel == null)
+            {
+                <div class="text-center text-light p-4">
+                    <h4>Please select a model to start the terminal session</h4>
+                </div>
+            }
+            else
+            {
+                <!-- Terminal Output -->
+                <div class="chat-messages" @ref="terminalRef" id="terminal">
+                    @foreach (var msg in CurrentSession.Messages)
+                    {
+                        <div class="d-flex @(msg.IsUser ? "justify-content-end" : "justify-content-start")">
+                            <div class="card @(msg.IsError ? "message-error" : "")">
+                                <div class="card-body">
+                                    <pre class="card-text">@FormatTerminalOutput(msg.Content)</pre>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    @if (IsSending)
+                    {
+                        <div class="d-flex justify-content-start">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="typing-indicator">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Terminal Input -->
+                <div class="chat-input">
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-0 text-light">
+                            @($"user@ubuntu:{CurrentDirectory}$ ")
+                        </span>
+                        <input type="text" class="form-control" @bind="input" @bind:event="oninput"
+                               @onkeydown="HandleKeyDown"
+                               placeholder="" disabled="@IsSending">
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private Conversation CurrentSession = new();
+    private ElementReference terminalRef;
+    private string input = "";
+    private bool IsSending;
+    private string CurrentDirectory = "~";
+    private List<string> CommandHistory = new();
+    private int HistoryIndex = -1;
+    private bool isJsInteropReady;
+
+    private List<Models> AvailableModels = new();
+    private Models CurrentModel;
+    private const string DEFAULT_LOCAL_URL = "http://localhost:1234";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAvailableModels();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isJsInteropReady = true;
+            await LoadTerminalSession();
+            StateHasChanged();
+        }
+
+        if (isJsInteropReady)
+        {
+            await JS.InvokeVoidAsync("scrollToBottom", terminalRef);
+        }
+    }
+
+    private async Task LoadAvailableModels()
+    {
+        try
+        {
+            using var client = new HttpClient();
+            var response = await client.GetAsync($"{DEFAULT_LOCAL_URL}/v1/models");
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<ModelResponse>();
+            if (result?.Data != null)
+            {
+                AvailableModels = result.Data;
+                // Try to restore previously selected model
+                var savedModelId = await JS.InvokeAsync<string>("localStorage.getItem", "selectedModelId");
+                if (!string.IsNullOrEmpty(savedModelId))
+                {
+                    CurrentModel = AvailableModels.FirstOrDefault(m => m.Id == savedModelId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load models: {ex.Message}");
+        }
+    }
+
+    private async Task SelectModel(Models model)
+    {
+        CurrentModel = model;
+        await JS.InvokeVoidAsync("localStorage.setItem", "selectedModelId", model.Id);
+        await ResetTerminal();
+    }
+
+    private string FormatTerminalOutput(string content)
+    {
+        var match = Regex.Match(content, @"<terminal_output>(.*?)</terminal_output>", RegexOptions.Singleline);
+        return match.Success ? match.Groups[1].Value.TrimEnd() : content.TrimEnd();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Enter":
+                if (!string.IsNullOrWhiteSpace(input))
+                    await SendCommand();
+                break;
+
+            case "ArrowUp":
+                NavigateHistory(-1);
+                break;
+
+            case "ArrowDown":
+                NavigateHistory(1);
+                break;
+
+            case "Tab":
+                // TODO: Implement tab completion
+                break;
+        }
+    }
+
+    private void NavigateHistory(int direction)
+    {
+        if (CommandHistory.Count == 0) return;
+
+        HistoryIndex = Math.Clamp(HistoryIndex + direction, -1, CommandHistory.Count - 1);
+
+        if (HistoryIndex == -1)
+            input = "";
+        else
+            input = CommandHistory[HistoryIndex];
+
+        StateHasChanged();
+    }
+
+    private async Task SendCommand()
+    {
+        if (string.IsNullOrWhiteSpace(input) || IsSending || CurrentModel == null) return;
+
+        IsSending = true;
+        var command = input;
+        CommandHistory.Insert(0, command);
+        HistoryIndex = -1;
+
+        var userMessage = new Message { IsUser = true, Content = command, Timestamp = DateTime.Now };
+        CurrentSession.Messages.Add(userMessage);
+        input = "";
+        StateHasChanged();
+
+        try
+        {
+            var aiMsg = new Message { IsUser = false, Content = "", Timestamp = DateTime.Now };
+            CurrentSession.Messages.Add(aiMsg);
+            var sb = new StringBuilder();
+
+            await TerminalService.StreamCommandAsync(
+                CurrentSession.Messages.ToList(),
+                async content =>
+                {
+                    sb.Append(content);
+                    aiMsg.Content = sb.ToString();
+                    await InvokeAsync(StateHasChanged);
+
+                    // Update current directory if cd command was successful
+                    if (command.StartsWith("cd ") && !aiMsg.Content.Contains("No such file or directory"))
+                    {
+                        var newDir = command.Substring(3).Trim();
+                        UpdateCurrentDirectory(newDir);
+                    }
+                }
+            );
+
+            await SaveTerminalSession();
+        }
+        catch (Exception ex)
+        {
+            CurrentSession.Messages.Add(new Message
+                {
+                    IsUser = false,
+                    IsError = true,
+                    Content = $"Error: {ex.Message}",
+                    Timestamp = DateTime.Now
+                });
+        }
+        finally
+        {
+            IsSending = false;
+            StateHasChanged();
+        }
+    }
+
+    private void UpdateCurrentDirectory(string newDir)
+    {
+        if (newDir == "~" || newDir == "")
+        {
+            CurrentDirectory = "~";
+        }
+        else if (newDir.StartsWith("/"))
+        {
+            CurrentDirectory = newDir;
+        }
+        else if (newDir == "..")
+        {
+            var parts = CurrentDirectory.Split('/');
+            if (parts.Length > 1)
+            {
+                CurrentDirectory = string.Join("/", parts.Take(parts.Length - 1));
+                if (CurrentDirectory == "") CurrentDirectory = "/";
+            }
+        }
+        else
+        {
+            if (CurrentDirectory == "~" || CurrentDirectory == "/")
+                CurrentDirectory = CurrentDirectory + newDir;
+            else
+                CurrentDirectory = CurrentDirectory + "/" + newDir;
+        }
+    }
+
+    private async Task LoadTerminalSession()
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", "terminalSession");
+            if (!string.IsNullOrEmpty(json))
+            {
+                var session = JsonSerializer.Deserialize<Conversation>(json);
+                if (session != null)
+                {
+                    CurrentSession = session;
+                    // Extract last working directory from session if available
+                    var lastOutput = CurrentSession.Messages.LastOrDefault(m => !m.IsUser)?.Content;
+                    if (lastOutput != null)
+                    {
+                        var dirMatch = Regex.Match(lastOutput, @"user@ubuntu:([^$]+)\$");
+                        if (dirMatch.Success)
+                        {
+                            CurrentDirectory = dirMatch.Groups[1].Value;
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Start fresh session if load fails
+            CurrentSession = new();
+        }
+    }
+
+    private async Task SaveTerminalSession()
+    {
+        await JS.InvokeVoidAsync("localStorage.setItem", "terminalSession",
+            JsonSerializer.Serialize(CurrentSession));
+    }
+
+    private async Task ClearTerminal()
+    {
+        CurrentSession.Messages.Clear();
+        await SaveTerminalSession();
+        StateHasChanged();
+    }
+
+    private async Task ResetTerminal()
+    {
+        CurrentSession = new();
+        CurrentDirectory = "~";
+        CommandHistory.Clear();
+        await SaveTerminalSession();
+        StateHasChanged();
+    }
+}

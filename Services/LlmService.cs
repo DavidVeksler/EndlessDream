@@ -4,7 +4,8 @@ using System.Text.Json;
 
 public class LlmService
 {
-    private const string DEFAULT_LOCAL_URL = "http://localhost:1234";
+    private const string DEFAULT_LOCAL_URL = "http://dream.davidveksler.com:1234";
+    private const string REMOTE_URL = "http://73.122.182.81:1234";
     private readonly Dictionary<string, AIEndpoint> _endpoints;
     private readonly HttpClient _httpClient;
 
@@ -14,21 +15,20 @@ public class LlmService
 
         _endpoints = new Dictionary<string, AIEndpoint>
         {
-            ["goal-setting"] = AIEndpoint.CreateCustomService(
-                "goal-setting",
-                "Goal Setting AI",
-                "Helps set and track your goals",
-                "http://localhost:8001"
-            ),
-            ["coaching"] = AIEndpoint.CreateCustomService(
-                "coaching",
-                "Coaching AI",
-                "Provides ongoing coaching and support",
-                "http://localhost:8002"
-            )
+            //["goal-setting"] = AIEndpoint.CreateCustomService(
+            //    "goal-setting",
+            //    "Goal Setting AI",
+            //    "Helps set and track your goals",
+            //    "http://localhost:8001"
+            //),
+            //["coaching"] = AIEndpoint.CreateCustomService(
+            //    "coaching",
+            //    "Coaching AI",
+            //    "Provides ongoing coaching and support",
+            //    "http://localhost:8002"
+            //)
         };
     }
-
 
     public async Task StreamCompletionAsync(
         List<Message> messages,
@@ -62,7 +62,8 @@ public class LlmService
         if (!endpoint.IsCustomService && !string.IsNullOrEmpty(endpoint.ModelId))
             requestBody["model"] = endpoint.ModelId;
 
-        if (maxTokens > 0) requestBody["max_tokens"] = endpoint.IsCustomService ? 15000 : maxTokens;
+        if (maxTokens > 0) 
+            requestBody["max_tokens"] = endpoint.IsCustomService ? 15000 : maxTokens;
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{endpoint.EndpointUrl}/v1/chat/completions")
         {
@@ -103,7 +104,8 @@ public class LlmService
                         delta.TryGetProperty("content", out var content))
                     {
                         var contentString = content.GetString();
-                        if (!string.IsNullOrEmpty(contentString)) await onContent(contentString);
+                        if (!string.IsNullOrEmpty(contentString)) 
+                            await onContent(contentString);
                     }
                 }
             }
@@ -114,12 +116,25 @@ public class LlmService
         }
     }
 
+    // Get only local models
+    public IEnumerable<AIEndpoint> GetLocalModels()
+    {
+        return _endpoints.Values.Where(e => !e.IsCustomService && e.Source == "local");
+    }
 
+    // Get only remote models
+    public IEnumerable<AIEndpoint> GetRemoteModels()
+    {
+        return _endpoints.Values.Where(e => !e.IsCustomService && e.Source == "remote");
+    }
+
+    // Get custom services
     public IEnumerable<AIEndpoint> GetCustomServices()
     {
         return _endpoints.Values.Where(e => e.IsCustomService);
     }
 
+    // Get all endpoints
     public IEnumerable<AIEndpoint> GetAllEndpoints()
     {
         return _endpoints.Values;
@@ -127,9 +142,15 @@ public class LlmService
 
     public async Task LoadLocalModels()
     {
+        await LoadModelsFromUrl(DEFAULT_LOCAL_URL, "local");
+        await LoadModelsFromUrl(REMOTE_URL, "remote");
+    }
+
+    private async Task LoadModelsFromUrl(string baseUrl, string source)
+    {
         try
         {
-            using var tempClient = new HttpClient { BaseAddress = new Uri(DEFAULT_LOCAL_URL) };
+            using var tempClient = new HttpClient { BaseAddress = new Uri(baseUrl) };
             var response = await tempClient.GetAsync("/v1/models");
             response.EnsureSuccessStatusCode();
 
@@ -138,13 +159,13 @@ public class LlmService
 
             foreach (var model in result.Data)
             {
-                var endpoint = AIEndpoint.CreateLocalModel(model, DEFAULT_LOCAL_URL);
+                var endpoint = AIEndpoint.CreateModel(model, baseUrl, source);
                 _endpoints[endpoint.Id] = endpoint;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to load remote models: {ex.Message}");
+            Console.WriteLine($"Failed to load models from {baseUrl} ({source}): {ex.Message}");
         }
     }
 }

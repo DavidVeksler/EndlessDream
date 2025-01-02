@@ -1,0 +1,133 @@
+﻿/* Terminal specific styles */
+::deep .terminal-mode {
+    background-color: #2D0922;
+    color: #ffffff;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+    ::deep .terminal-mode .chat-messages {
+        background-color: #2D0922;
+        padding: 0.5rem 1rem;
+    }
+
+    ::deep .terminal-mode .chat-header {
+        background-color: #2D0922;
+        border-bottom: 1px solid #4A4A4A;
+        padding: 0.5rem 1rem;
+    }
+
+        ::deep .terminal-mode .chat-header h5 {
+            color: #ffffff;
+        }
+
+    ::deep .terminal-mode .chat-input {
+        background-color: #2D0922;
+        border-top: 1px solid #4A4A4A;
+        padding: 0.5rem 1rem;
+    }
+
+        ::deep .terminal-mode .chat-input .form-control {
+            background-color: #2D0922;
+            border: none;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 0.5rem;
+            font-size: 1rem;
+        }
+
+            ::deep .terminal-mode .chat-input .form-control:focus {
+                box-shadow: none;
+                outline: none;
+            }
+
+    ::deep .terminal-mode .btn-primary {
+        display: none; /* Hide send button in terminal mode */
+    }
+
+    /* Message styling for terminal */
+    ::deep .terminal-mode .card {
+        background-color: transparent !important;
+        border: none;
+        border-radius: 0;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    ::deep .terminal-mode .card-body {
+        padding: 0;
+    }
+
+    ::deep .terminal-mode .card-footer {
+        display: none; /* Hide message timestamps */
+    }
+
+    ::deep .terminal-mode pre {
+        color: #ffffff;
+        margin: 0;
+        white-space: pre-wrap;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 1rem;
+    }
+
+    /* User input styling */
+    ::deep .terminal-mode .justify-content-end .card {
+        background-color: transparent !important;
+    }
+
+    ::deep .terminal-mode .justify-content-end pre {
+        color: #50FA7B; /* Dracula theme green for user input */
+    }
+
+    /* Terminal output styling */
+    ::deep .terminal-mode .justify-content-start pre {
+        color: #F8F8F2; /* Dracula theme foreground for terminal output */
+    }
+
+    /* Error message styling */
+    ::deep .terminal-mode .message-error pre {
+        color: #FF5555; /* Dracula theme red for errors */
+    }
+
+    /* Scrollbar styling for terminal */
+    ::deep .terminal-mode ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::deep .terminal-mode ::-webkit-scrollbar-track {
+        background: #2D0922;
+    }
+
+    ::deep .terminal-mode ::-webkit-scrollbar-thumb {
+        background: #4A4A4A;
+        border-radius: 5px;
+    }
+
+        ::deep .terminal-mode ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+    /* Typing indicator for terminal */
+    ::deep .terminal-mode .typing-indicator {
+        padding: 0;
+    }
+
+        ::deep .terminal-mode .typing-indicator span {
+            background: #50FA7B;
+        }
+
+    /* Command prompt cursor animation */
+    ::deep .terminal-mode .form-control::after {
+        content: '█';
+        animation: blink 1s step-end infinite;
+    }
+
+@keyframes blink {
+    0%, 100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}

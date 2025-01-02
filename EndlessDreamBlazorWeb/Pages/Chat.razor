@@ -17,7 +17,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="chat#">
-                <i class="bi bi-gear"></i> AI Assistant
+                <i class="bi bi-robot"></i> AI Assistant
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -29,23 +29,8 @@
                             <i class="bi bi-plus-circle"></i> New Chat
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                           
-
-                            @if (LocalEndpoints.Any())
-                            {
-                                <li><hr class="dropdown-divider"></li>
-                                <li><h6 class="dropdown-header">Local Models</h6></li>
-                                @foreach (var model in LocalEndpoints)
-                                {
-                                    <li>
-                                        <button class="dropdown-item" @onclick="() => NewChat(model)">
-                                            <i class="bi bi-pencil"></i> @model.Name
-                                        </button>
-                                    </li>
-                                }
-                            }
-
-                             <li><h6 class="dropdown-header">Custom Services</h6></li>
+                            <!-- Custom Services Section -->
+                            <li><h6 class="dropdown-header">Custom Services</h6></li>
                             @foreach (var service in CustomServices)
                             {
                                 <li>
@@ -55,7 +40,35 @@
                                 </li>
                             }
 
-                           
+                            <!-- Local Models Section -->
+                            @if (LocalModels.Any())
+                            {
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">Local Models</h6></li>
+                                @foreach (var model in LocalModels)
+                                {
+                                    <li>
+                                        <button class="dropdown-item" @onclick="() => NewChat(model)">
+                                            <i class="bi bi-laptop"></i> @model.Name
+                                        </button>
+                                    </li>
+                                }
+                            }
+
+                            <!-- Remote Models Section -->
+                            @if (RemoteModels.Any())
+                            {
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">Remote Models</h6></li>
+                                @foreach (var model in RemoteModels)
+                                {
+                                    <li>
+                                        <button class="dropdown-item" @onclick="() => NewChat(model)">
+                                            <i class="bi bi-cloud"></i> @model.Name
+                                        </button>
+                                    </li>
+                                }
+                            }
                         </ul>
                     </li>
                     <li class="nav-item">
@@ -80,7 +93,7 @@
                         <span class="text-truncate">
                             @{
                                 var endpoint = AllEndpoints.FirstOrDefault(e => e.Id == chat.ServiceId);
-                                var icon = endpoint?.IsCustomService == true ? "bi-gear" : "bi-pencil";
+                                var icon = GetEndpointIcon(endpoint);
                             }
                             <i class="bi @icon"></i> @chat.Title
                         </span>
@@ -98,11 +111,11 @@
                     <h5 class="mb-0 text-truncate">
                         @{
                             var currentEndpoint = AllEndpoints.FirstOrDefault(e => e.Id == CurrentChat.ServiceId);
-                            var currentIcon = currentEndpoint?.IsCustomService == true ? "bi-gear" : "bi-pencil";
+                            var currentIcon = GetEndpointIcon(currentEndpoint);
                         }
                         <i class="bi @currentIcon"></i> @CurrentChat.Title
                         <small class="text-muted">
-                            (@(currentEndpoint?.Name ?? "Unknown Service"))
+                            (@GetModelDisplayName(currentEndpoint))
                         </small>
                     </h5>
                 </div>
@@ -208,8 +221,8 @@
 
     // Endpoint Collections
     private IEnumerable<AIEndpoint> CustomServices => LlmService.GetCustomServices();
-    private IEnumerable<AIEndpoint> LocalEndpoints =>
-        LlmService.GetAllEndpoints().Where(e => !e.IsCustomService);
+    private IEnumerable<AIEndpoint> LocalModels => LlmService.GetLocalModels();
+    private IEnumerable<AIEndpoint> RemoteModels => LlmService.GetRemoteModels();
     private IEnumerable<AIEndpoint> AllEndpoints => LlmService.GetAllEndpoints();
 
     private bool isJsInteropReady;
@@ -217,22 +230,6 @@
     protected override async Task OnInitializedAsync()
     {
         await LlmService.LoadLocalModels();
-
-        if (!Chats.Any())
-        {
-            var defaultService = LocalEndpoints.FirstOrDefault();
-            if (defaultService != null)
-            {
-                Chats.Insert(0, new Conversation
-                    {
-                        Title = defaultService.IsCustomService
-                            ? $"New {defaultService.Name} Chat"
-                            : $"Chat with {defaultService.Name}",
-                        ServiceId = defaultService.Id
-                    });
-                CurrentChat = Chats[0];
-            }
-        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -241,7 +238,29 @@
         {
             isJsInteropReady = true;
             await LoadChats();
-            
+
+            // Initialize default chat if none exists
+            if (!Chats.Any())
+            {
+                var defaultService = LocalModels.FirstOrDefault() ?? CustomServices.FirstOrDefault();
+                if (defaultService != null)
+                {
+                    var chat = new Conversation
+                        {
+                            Title = defaultService.IsCustomService
+                                ? $"New {defaultService.Name} Chat"
+                                : $"Chat with {defaultService.Name}",
+                            ServiceId = defaultService.Id
+                        };
+
+                    Chats.Insert(0, chat);
+                    CurrentChat = chat;
+                    await SaveChats();
+                }
+            }
+
+            StateHasChanged();
+
             if (isJsInteropReady)
             {
                 await JS.InvokeVoidAsync("scrollToBottom", messagesRef);
@@ -249,6 +268,21 @@
         }
     }
 
+    private string GetEndpointIcon(AIEndpoint endpoint)
+    {
+        if (endpoint == null) return "bi-question-circle";
+        if (endpoint.IsCustomService) return "bi-gear";
+        return endpoint.Source == "local" ? "bi-laptop" : "bi-cloud";
+    }
+
+    private string GetModelDisplayName(AIEndpoint endpoint)
+    {
+        if (endpoint == null) return "Unknown";
+        if (endpoint.IsCustomService) return endpoint.Name;
+        return endpoint.Source == "local"
+            ? $"Local: {endpoint.Name}"
+            : $"Remote: {endpoint.Name}";
+    }
 
     private async Task LoadChats()
     {
@@ -264,7 +298,7 @@
         catch
         {
             Chats = new();
-            var defaultService = LocalEndpoints.FirstOrDefault();
+            var defaultService = CustomServices.FirstOrDefault();
             if (defaultService != null)
             {
                 await NewChat(defaultService);
@@ -283,8 +317,8 @@
         var chat = new Conversation
             {
                 Title = endpoint.IsCustomService
-                            ? $"New {endpoint.Name} Chat"
-                            : $"Chat with {endpoint.Name}",
+                        ? $"New {endpoint.Name} Chat"
+                        : $"Chat with {endpoint.Name}",
                 ServiceId = endpoint.Id
             };
 
@@ -306,12 +340,7 @@
 
         IsSending = true;
         var userMessage = new Message { IsUser = true, Content = input, Timestamp = DateTime.Now };
-
-        // Create a new list to hold the messages for this chat
-        var chatMessages = CurrentChat.Messages ?? new List<Message>();
-        chatMessages.Add(userMessage);
-        CurrentChat.Messages = chatMessages;
-
+        CurrentChat.Messages.Add(userMessage);
         input = "";
         StateHasChanged();
 
@@ -333,11 +362,6 @@
                 {
                     sb.Append(content);
                     aiMsg.Content = sb.ToString();
-                    // Important: Reference the current chat's messages directly
-                    if (!CurrentChat.Messages.Contains(aiMsg))
-                    {
-                        CurrentChat.Messages.Add(aiMsg);
-                    }
                     await InvokeAsync(StateHasChanged);
                 },
                 temp,
@@ -345,7 +369,6 @@
                 CurrentChat.ServiceId
             );
 
-            // Make sure to save state after each message
             await SaveChats();
         }
         catch (Exception ex)

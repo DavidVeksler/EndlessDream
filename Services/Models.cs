@@ -42,8 +42,9 @@ public class AIEndpoint
     public string EndpointUrl { get; set; }
     public bool IsCustomService { get; set; }
     public string ModelId { get; set; } // For local models
+    public string Source { get; set; } // To track model source
 
-    // Factory method for local services
+    // Factory method for custom services
     public static AIEndpoint CreateCustomService(string id, string name, string description, string endpointUrl)
     {
         return new AIEndpoint
@@ -52,21 +53,35 @@ public class AIEndpoint
             Name = name,
             Description = description,
             EndpointUrl = endpointUrl,
-            IsCustomService = true
+            IsCustomService = true,
+            Source = "custom"
         };
     }
 
-    // Factory method for local models
-    public static AIEndpoint CreateLocalModel(Models model, string baseUrl)
+    // Factory method for local models (maintaining backward compatibility)
+    public static AIEndpoint CreateLocalModel(Models model, string baseUrl, string modelId)
+    {
+        return CreateModel(model, baseUrl, modelId);
+    }
+
+    // New factory method for any model source
+    public static AIEndpoint CreateModel(Models model, string baseUrl, string source)
     {
         return new AIEndpoint
         {
-            Id = $"local-{model.Id}",
+            Id = $"{source}-{model.Id}",
             Name = model.Id,
-            Description = $"Local model: {model.Id}",
+            Description = $"{source} model: {model.Id}",
             EndpointUrl = baseUrl,
             IsCustomService = false,
-            ModelId = model.Id
+            ModelId = model.Id,
+            Source = source
         };
+    }
+
+    // Helper method to determine if model is from a specific source
+    public bool IsFromSource(string source)
+    {
+        return Source?.Equals(source, StringComparison.OrdinalIgnoreCase) ?? false;
     }
 }
