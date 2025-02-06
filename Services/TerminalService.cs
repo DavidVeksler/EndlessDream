@@ -6,19 +6,13 @@ public class TerminalService
 {
     private const string DEFAULT_ENDPOINT = "http://dream.davidveksler.com:1234";
     private readonly HttpClient _httpClient;
-    private readonly string _systemPrompt;
+    private string _systemPrompt;
 
     public TerminalService(HttpClient httpClient)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         
         _systemPrompt = @"You are an emulator for an Ubuntu 22.04 LTS terminal session. You must behave exactly like a Linux terminal, maintaining working directory state and environment variables between commands. 
-
-Every response must be wrapped in <terminal_output> tags and contain:
-1. The current working directory path
-2. The username (default: user)
-3. The hostname (default: ubuntu)
-4. The command output with proper formatting
 
 Key behaviors:
 - Maintain state between commands including working directory, environment variables, and file system
@@ -30,6 +24,9 @@ Key behaviors:
 - Support tab completion hints
 - Support pipe operations and redirections
 - Initialize with home directory at /home/user
+- You MUST STAY IN CHARACTER AT ALL TIMES.  RETURN ERRORS FOR ANY REQUESTS THAT ARE NOT VALID UBUNTU COMMANDS
+- Any commands that are not valid terminal commands should return a realistic Ubuntu error message.
+- Start in home folder
 
 Critical system events:
 - For destructive commands like `rm -rf /`, respond with realistic system failure messages
@@ -37,110 +34,97 @@ Critical system events:
 - When filesystem corruption occurs, show realistic ext4 error messages
 - For memory overflow, display appropriate OOM killer messages
 - On segmentation faults, show the classic crash dump with register states
-- Buffer overflow attempts should trigger realistic protection mechanisms";
+- Buffer overflow attempts should trigger realistic protection mechanisms
+- Current date: 
+" +  DateTime.Now  + @"
+";
     }
 
+
     public async Task StreamCommandAsync(
-        List<Message> history,
-        Func<string, Task> onContent,
-        float temperature = 0.2f,
-        int maxTokens = 2000
-    )
+    List<Message> history,
+    Func<string, Task> onContent,
+    float temperature = 0.2f,
+    int maxTokens = 2000
+)
+{
+    var requestBody = new Dictionary<string, object>
     {
-        var requestBody = new Dictionary<string, object>
+        ["messages"] = history.Select(m => new
         {
-            ["messages"] = history.Select(m => new
-            {
-                role = m.IsUser ? "user" : "assistant",
-                content = m.Content
-            }).Prepend(new
-            {
-                role = "system",
-                content = _systemPrompt
-            }).ToList(),
-            ["temperature"] = temperature,
-            ["max_tokens"] = maxTokens,
-            ["stream"] = true
-        };
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{DEFAULT_ENDPOINT}/v1/chat/completions")
+            role = m.IsUser ? "user" : "assistant",
+            content = m.Content
+        }).Prepend(new
         {
-            Content = new StringContent(
-                JsonSerializer.Serialize(requestBody),
-                Encoding.UTF8,
-                "application/json"
-            )
-        };
+            role = "system",
+            content = @"You are an emulator for an Ubuntu 22.04 LTS terminal session. Your responses MUST BE EXACTLY like a real terminal:
 
-        using var response = await _httpClient.SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead
-        );
+user@ubuntu:/current/path$  command output goes here
 
-        response.EnsureSuccessStatusCode();
+Return errors for any prompt which is not a valid Ubuntu terminal command.
+"
+        }).ToList(),
+        ["temperature"] = temperature,
+        ["max_tokens"] = maxTokens,
+        ["stream"] = true
+    };
 
-        await using var stream = await response.Content.ReadAsStreamAsync();
-        using var reader = new StreamReader(stream);
+    using var request = new HttpRequestMessage(HttpMethod.Post, $"{DEFAULT_ENDPOINT}/v1/chat/completions")
+    {
+        Content = new StringContent(
+            JsonSerializer.Serialize(requestBody),
+            Encoding.UTF8,
+            "application/json"
+        )
+    };
 
-        var terminalOutputStarted = false;
-        var fullResponse = new StringBuilder();
+    using var response = await _httpClient.SendAsync(
+        request,
+        HttpCompletionOption.ResponseHeadersRead
+    );
 
-        while (!reader.EndOfStream)
+    response.EnsureSuccessStatusCode();
+
+    await using var stream = await response.Content.ReadAsStreamAsync();
+    using var reader = new StreamReader(stream);
+
+    while (!reader.EndOfStream)
+    {
+        var line = await reader.ReadLineAsync();
+        if (string.IsNullOrEmpty(line)) continue;
+        if (!line.StartsWith("data:")) continue;
+        if (line == "data: [DONE]") break;
+
+        try
         {
-            var line = await reader.ReadLineAsync();
-            if (string.IsNullOrEmpty(line)) continue;
-            if (!line.StartsWith("data:")) continue;
-            if (line == "data: [DONE]") break;
+            var data = line.Substring(5).Trim();
+            var jsonElement = JsonSerializer.Deserialize<JsonElement>(data);
 
-            try
+            if (jsonElement.TryGetProperty("choices", out var choices) &&
+                choices.GetArrayLength() > 0)
             {
-                var data = line.Substring(5).Trim();
-                var jsonElement = JsonSerializer.Deserialize<JsonElement>(data);
-
-                if (jsonElement.TryGetProperty("choices", out var choices) &&
-                    choices.GetArrayLength() > 0)
+                var firstChoice = choices[0];
+                if (firstChoice.TryGetProperty("delta", out var delta) &&
+                    delta.TryGetProperty("content", out var content))
                 {
-                    var firstChoice = choices[0];
-                    if (firstChoice.TryGetProperty("delta", out var delta) &&
-                        delta.TryGetProperty("content", out var content))
+                    var contentString = content.GetString();
+                    if (!string.IsNullOrEmpty(contentString))
                     {
-                        var contentString = content.GetString();
-                        if (!string.IsNullOrEmpty(contentString))
-                        {
-                            fullResponse.Append(contentString);
-                            var currentResponse = fullResponse.ToString();
-
-                            // Check for terminal output tags
-                            if (!terminalOutputStarted && !currentResponse.Contains("<terminal_output>"))
-                            {
-                                await onContent("STICK TO THE SCRIPT: Please provide output in <terminal_output> tags\n\n");
-                                continue;
-                            }
-
-                            // Track if we've started terminal output
-                            if (contentString.Contains("<terminal_output>"))
-                            {
-                                terminalOutputStarted = true;
-                            }
-
-                            await onContent(contentString);
-                        }
+                        await onContent(contentString);
                     }
                 }
             }
-            catch (JsonException ex)
-            {
-                Console.WriteLine($"Error parsing JSON: {ex.Message}\nLine: {line}");
-                await onContent($"Error: Failed to parse terminal output - {ex.Message}");
-            }
         }
-
-        // If no terminal output tags were found in the entire response
-        if (!terminalOutputStarted)
+        catch (JsonException ex)
         {
-            await onContent("\nSTICK TO THE SCRIPT: Response must be wrapped in <terminal_output> tags");
+            Console.WriteLine($"Error parsing JSON: {ex.Message}\nLine: {line}");
         }
     }
+
+    // If we got no output at all, provide a default prompt
+    await onContent("\nuser@ubuntu:~$ ");
+}
+
 
     // Environment tracking methods
     private Dictionary<string, string> Environment { get; set; } = new()
