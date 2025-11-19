@@ -90,8 +90,8 @@ public class LlmService
         try
         {
             _logger.LogDebug("Loading models from {Source} endpoint: {Url}", source, baseUrl);
-            using var tempClient = new HttpClient { BaseAddress = new Uri(baseUrl) };
-            var response = await tempClient.GetAsync("/v1/models");
+            var url = $"{baseUrl.TrimEnd('/')}/v1/models";
+            var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<ModelResponse>();
@@ -107,6 +107,10 @@ public class LlmService
                 _endpoints[endpoint.Id] = endpoint;
                 _logger.LogDebug("Registered model: {ModelId} from {Source}", endpoint.Id, source);
             }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error loading models from {Source} endpoint: {Url}", source, baseUrl);
         }
         catch (Exception ex)
         {

@@ -104,10 +104,20 @@ public class CoinGeckoPriceService
             }
             return amount / prices[0].CurrentPrice;
         }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error converting to BTC for {Asset}", asset);
+            return -1; // Indicate error with negative value
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Parse error converting to BTC for {Asset}", asset);
+            return -1; // Indicate error with negative value
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error converting to BTC for {Asset}", asset);
-            return amount / 100000; // Fallback: satoshi price approximation
+            _logger.LogError(ex, "Unexpected error converting to BTC for {Asset}", asset);
+            return 0; // Default to zero for other errors
         }
     }
 

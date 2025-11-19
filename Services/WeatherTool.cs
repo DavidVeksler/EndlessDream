@@ -23,6 +23,10 @@ public class WeatherTool : ITool
     /// Executes weather lookup for a specified location.
     /// </summary>
     /// <param name="parameters">Parameters array where first element is location name</param>
+    /// <remarks>
+    /// BREAKING CHANGE (v2.0): Temperature units changed from Fahrenheit (°F) to Celsius (°C).
+    /// If your code expects Fahrenheit values, conversion will be needed: °F = (°C * 9/5) + 32
+    /// </remarks>
     public async Task<string> ExecuteAsync(string[] parameters)
     {
         if (parameters.Length == 0)
@@ -80,8 +84,12 @@ public class WeatherTool : ITool
     {
         var url = $"https://api.openweathermap.org/data/2.5/weather?" +
                   $"lat={lat}&lon={lon}&exclude=minutely,hourly,daily,alerts&units=metric&appid={apiKey}";
-        return await _httpClient.GetFromJsonAsync<JsonElement>(url)
-            ?? throw new InvalidOperationException("Failed to fetch weather data");
+        var response = await _httpClient.GetFromJsonAsync<JsonElement>(url);
+        if (response.ValueKind == JsonValueKind.Undefined)
+        {
+            throw new InvalidOperationException("Failed to fetch weather data");
+        }
+        return response;
     }
 
     /// <summary>

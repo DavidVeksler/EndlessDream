@@ -168,7 +168,7 @@ Return errors for any prompt which is not a valid Ubuntu terminal command.";
         }
     }
 
-    private static async Task StreamLinesAsync(StreamReader reader, Func<string, Task> onContent)
+    private async Task StreamLinesAsync(StreamReader reader, Func<string, Task> onContent)
     {
         while (!reader.EndOfStream)
         {
@@ -199,8 +199,7 @@ Return errors for any prompt which is not a valid Ubuntu terminal command.";
             }
             catch (JsonException ex)
             {
-                // Log JSON parsing errors but continue
-                System.Console.WriteLine($"Error parsing JSON: {ex.Message}");
+                _logger.LogWarning(ex, "Error parsing JSON from terminal stream");
             }
         }
     }
