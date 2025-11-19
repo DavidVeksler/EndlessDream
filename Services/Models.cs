@@ -1,51 +1,89 @@
-﻿public class Conversation
+/// <summary>
+/// Represents a conversation session with multiple messages.
+/// </summary>
+public class Conversation
 {
-   // public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Title { get; set; }
-    public string ServiceId { get; set; } // Track which AI service this chat uses
+    /// <summary>Gets or sets the conversation title.</summary>
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the AI service used for this conversation.</summary>
+    public string ServiceId { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the messages in this conversation.</summary>
     public List<Message> Messages { get; set; } = new();
-  //  public DateTime CreatedAt { get; set; } = DateTime.Now;
 }
 
-
-public class Models
-{
-    public string Id { get; set; } = "";
-
-    //public string EndpointUrl { get; set; }
-    //public string Object { get; set; } = "";
-    //public string OwnedBy { get; set; } = "";
-    //public List<object> Permission { get; set; } = new();
-}
-
-public class ModelResponse
-{
-    public List<Models> Data { get; set; } = new();
-    //public string Object { get; set; } = "";
-}
-
-
+/// <summary>
+/// Represents a single message in a conversation.
+/// </summary>
 public class Message
 {
+    /// <summary>Gets or sets whether this message is from the user (true) or assistant (false).</summary>
     public bool IsUser { get; set; }
-    public string Content { get; set; } = "";
-    public DateTime Timestamp { get; set; }
+
+    /// <summary>Gets or sets the message content.</summary>
+    public string Content { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the timestamp when the message was created.</summary>
+    public DateTime Timestamp { get; set; } = DateTime.Now;
+
+    /// <summary>Gets or sets whether this message represents an error.</summary>
     public bool IsError { get; set; }
 }
 
+/// <summary>
+/// Represents an AI model from the LLM API.
+/// </summary>
+public class Models
+{
+    /// <summary>Gets or sets the unique model identifier.</summary>
+    public string Id { get; set; } = string.Empty;
+}
 
+/// <summary>
+/// Response from LLM endpoint containing available models.
+/// </summary>
+public class ModelResponse
+{
+    /// <summary>Gets or sets the list of available models.</summary>
+    public List<Models> Data { get; set; } = new();
+}
+
+/// <summary>
+/// Represents an AI endpoint configuration for the LLM service.
+/// Supports local models, remote models, and custom services.
+/// </summary>
 public class AIEndpoint
 {
-    public string Id { get; set; }
-    public string Name { get; set; }
-    public string Description { get; set; }
-    public string EndpointUrl { get; set; }
-    public bool IsCustomService { get; set; }
-    public string ModelId { get; set; } // For local models
-    public string Source { get; set; } // To track model source
+    /// <summary>Gets or sets the unique endpoint identifier.</summary>
+    public string Id { get; set; } = string.Empty;
 
-    // Factory method for custom services
-    public static AIEndpoint CreateCustomService(string id, string name, string description, string endpointUrl)
+    /// <summary>Gets or sets the human-readable endpoint name.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the endpoint description.</summary>
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the endpoint base URL.</summary>
+    public string EndpointUrl { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets whether this is a custom service.</summary>
+    public bool IsCustomService { get; set; }
+
+    /// <summary>Gets or sets the model ID for non-custom services.</summary>
+    public string ModelId { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the source of the endpoint (local, remote, custom).</summary>
+    public string Source { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Creates a custom service endpoint.
+    /// </summary>
+    public static AIEndpoint CreateCustomService(
+        string id,
+        string name,
+        string description,
+        string endpointUrl)
     {
         return new AIEndpoint
         {
@@ -58,13 +96,9 @@ public class AIEndpoint
         };
     }
 
-    // Factory method for local models (maintaining backward compatibility)
-    public static AIEndpoint CreateLocalModel(Models model, string baseUrl, string modelId)
-    {
-        return CreateModel(model, baseUrl, modelId);
-    }
-
-    // New factory method for any model source
+    /// <summary>
+    /// Creates a model endpoint from an API response.
+    /// </summary>
     public static AIEndpoint CreateModel(Models model, string baseUrl, string source)
     {
         return new AIEndpoint
@@ -79,9 +113,15 @@ public class AIEndpoint
         };
     }
 
-    // Helper method to determine if model is from a specific source
-    public bool IsFromSource(string source)
-    {
-        return Source?.Equals(source, StringComparison.OrdinalIgnoreCase) ?? false;
-    }
+    /// <summary>
+    /// Creates a local model endpoint (backward compatibility).
+    /// </summary>
+    public static AIEndpoint CreateLocalModel(Models model, string baseUrl, string modelId) =>
+        CreateModel(model, baseUrl, modelId);
+
+    /// <summary>
+    /// Checks if this endpoint is from a specific source.
+    /// </summary>
+    public bool IsFromSource(string source) =>
+        Source?.Equals(source, StringComparison.OrdinalIgnoreCase) ?? false;
 }
