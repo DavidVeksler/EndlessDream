@@ -1,5 +1,6 @@
 ﻿@page "/GPTTest"
 @using EndlessDreamBlazorWeb.Services;
+@inject AppConfiguration Config
 
 <PageTitle>Counter</PageTitle>
 
@@ -14,7 +15,7 @@
 
     private async void IncrementCount()
     {
-        var service = new OpenAIGPTConversationService();
+        var service = new OpenAIGPTConversationService(Config);
         var answer = await service.GetSingleResponseAsync("Capital of France? Respond with answer only.");
         currentCount = answer;
     }

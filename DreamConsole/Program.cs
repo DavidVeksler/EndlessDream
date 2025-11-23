@@ -2,7 +2,7 @@
 
 Console.OutputEncoding = Encoding.UTF8;
 
-var llmService = new LlmService(new HttpClient());
+// var llmService = new LlmService(new HttpClient(), new AppConfiguration(configuration), logger);
 
 //Console.WriteLine("🚀 Sending request to LLM...");
 //var prompt = "How do I init and update a git submodule?";

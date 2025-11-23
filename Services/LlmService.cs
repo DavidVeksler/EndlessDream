@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using EndlessDreamBlazorWeb.Data;
+using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Service for managing LLM endpoint communication with streaming support.
