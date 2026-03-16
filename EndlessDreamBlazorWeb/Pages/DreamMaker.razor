@@ -1,5 +1,6 @@
 ﻿@page "/image-generator"
 @inject IJSRuntime JSRuntime
+@inject AppConfiguration Config
 @using System.Threading.Tasks
 @using EndlessDreamBlazorWeb.Services
 @using SixLabors.ImageSharp
@@ -96,7 +97,7 @@
             // Call the server-side RenderStableDiffusionImage function here
             // and update the ImageUrl and Status variables accordingly.
             var generator = new ImageGenerator();
-            var service = new OpenAIGPTConversationService();
+            var service = new OpenAIGPTConversationService(Config);
             string PromptText = await service.GetStableDiffusionRandomPrompt();
             var image = await generator.RenderStableDiffusionImage(PromptText, Steps, Seed, IsPhoto);
             await JSRuntime.InvokeVoidAsync("console.log", "Generating image...");

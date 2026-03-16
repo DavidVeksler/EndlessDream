@@ -1,4 +1,5 @@
 using HtmlAgilityPack;
+using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Tool for scraping web page content and extracting metadata.

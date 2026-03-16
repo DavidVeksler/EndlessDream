@@ -1,12 +1,17 @@
-﻿using EndlessDreamBlazorWeb.Data;
-
-namespace EndlessDreamBlazorWeb.Services
+﻿namespace EndlessDreamBlazorWeb.Services
 {
     public class OpenAIGPTConversationService
     {
+        private readonly AppConfiguration _config;
+
+        public OpenAIGPTConversationService(AppConfiguration config)
+        {
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+        }
+
         public async Task<string> GetSingleResponseAsync(string systemMessage)
         {
-            OpenAI_API.OpenAIAPI api = new(Settings.OpenAIKey);
+            OpenAI_API.OpenAIAPI api = new(_config.OpenAIApiKey);
 
             // https://github.com/OkGoDoIt/OpenAI-API-dotnet
 
@@ -28,7 +33,7 @@ namespace EndlessDreamBlazorWeb.Services
 
         public async Task<string> GetStableDiffusionRandomPrompt()
         {
-            OpenAI_API.OpenAIAPI api = new(Settings.OpenAIKey);
+            OpenAI_API.OpenAIAPI api = new(_config.OpenAIApiKey);
 
             // https://github.com/OkGoDoIt/OpenAI-API-dotnet
 

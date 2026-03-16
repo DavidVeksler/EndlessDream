@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using EndlessDreamBlazorWeb.Data;
+using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Service for emulating an Ubuntu terminal using an LLM backend.
