@@ -1,0 +1,27 @@
+# Managed by DavidVeksler/dependabot-fleet
+version: 2
+
+updates:
+  - package-ecosystem: "nuget"
+    directories:
+      - "/DreamConsole"
+      - "/EndlessDreamBlazorWeb"
+      - "/Services"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "01:40"
+      timezone: "America/Denver"
+    open-pull-requests-limit: 5
+    groups:
+      non-major-updates:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      security-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
